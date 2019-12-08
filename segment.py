@@ -1,9 +1,8 @@
-import os
 import cv2 as cv
 import numpy as np
 from matplotlib import pyplot as plt
-import numpy as np
 import argparse
+import math
 
 #finds the (potentially rotated) rectangular corners in a black/white image
 def find_corners(img):
@@ -32,7 +31,7 @@ def fill_holes(img):
 
 	return des
 
-#NOTE: img should be grayscale. see: 
+#NOTE: img should be grayscale. see:
 #https://docs.opencv.org/2.4/modules/imgproc/doc/miscellaneous_transformations.html?highlight=adaptivethreshold
 adap_types = {'mean': cv.ADAPTIVE_THRESH_MEAN_C, 'gaussian': cv.ADAPTIVE_THRESH_GAUSSIAN_C}
 def segment_adaptive(img, adap_type='mean', blockSize=11, C=2):
@@ -121,7 +120,7 @@ def segment_reference(ref_img, method):
 		plt.show()
 
 	else:
-	
+
 		img = cv.imread('./raw_img_data/puzzle_pieces.png',0)
 		img = cv.medianBlur(img,5)
 
@@ -155,7 +154,6 @@ def stats(img):
 def main():
 	parser = argparse.ArgumentParser(description='specify which file(s) to segment')
 	parser.add_argument('file', type=str, nargs='?', default='./raw_img_data/puzzle_pieces.png')
-
 	args = parser.parse_args()
 	ref_img = cv.imread(args.file)
 	segment_reference(ref_img, 'evan')
