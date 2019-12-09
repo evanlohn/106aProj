@@ -4,8 +4,10 @@ from matplotlib import pyplot as plt
 import argparse
 import math
 
+
 #finds the (potentially rotated) rectangular corners in a black/white image
 def find_corners(img):
+	#print(stats(img))
 	contours,_ = cv.findContours(np.uint8(img), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
 
 	coords = []
@@ -34,7 +36,7 @@ def fill_holes(img):
 #NOTE: img should be grayscale. see:
 #https://docs.opencv.org/2.4/modules/imgproc/doc/miscellaneous_transformations.html?highlight=adaptivethreshold
 adap_types = {'mean': cv.ADAPTIVE_THRESH_MEAN_C, 'gaussian': cv.ADAPTIVE_THRESH_GAUSSIAN_C}
-def segment_adaptive(img, adap_type='mean', blockSize=11, C=2):
+def calc_reference_mask(img, adap_type='mean', blockSize=11, C=2):
 
 	#simple adaptive binary thresholding on a (blurred) grayscale image
 	first_thresh = cv.adaptiveThreshold(img, 255, adap_types[adap_type], cv.THRESH_BINARY, blockSize, C)
@@ -70,55 +72,84 @@ def segment_adaptive(img, adap_type='mean', blockSize=11, C=2):
 	puzzle_mask = cv.morphologyEx(np.float32(puzzle_mask), cv.MORPH_CLOSE, kernel)
 
 	# one last dilation; we'd rather get a bit extra than miss parts of the puzzle
-	puzzle_mask = cv.dilate(puzzle_mask, np.ones((10,10)))
+	# NOTE: increase this if a bit of the puzzle is getting cut off
+	dilation_fac = 15
+	puzzle_mask = cv.dilate(puzzle_mask, np.ones((dilation_fac, dilation_fac)))
 	return puzzle_mask
+
+def preproc(img):
+	return cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+
+def reference_mask(gray):
+	#calc mask
+	#print(stats(gray))
+	blockSize= 101
+	C = -10 # more negative values are a *bit* more inclusive...
+
+	gray2 = cv.medianBlur(gray,41) # TODO: change 41 to a parameter... or maybe half of blocksize?
+
+	adap_mean = calc_reference_mask(gray2, adap_type='mean', blockSize=blockSize, C=C)
+	#adap_gauss = calc_reference_mask(gray2, adap_type='gaussian', blockSize=blockSize, C=C)
+	return adap_mean
 
 def segment_reference(ref_img, method):
 	print('segmenting reference img')
 
-	gray = cv.cvtColor(ref_img, cv.COLOR_BGR2GRAY)
+	gray = preproc(ref_img)
 
 	if method == 'evan':
-		#calc mask
-		#print(stats(gray))
-		blockSize= 101
-		C = -1
 
-		gray2 = cv.medianBlur(gray,41) # TODO: change 41 to a parameter... or maybe half of blocksize?
+		adap_mean = reference_mask(gray)
 
-		adap_mean = segment_adaptive(gray2, adap_type='mean', blockSize=blockSize, C=C)
-		adap_gauss = segment_adaptive(gray2, adap_type='gaussian', blockSize=blockSize, C=C)
-
-
-
-		images = [adap_mean, adap_gauss, gray, gray * adap_mean, gray * adap_gauss]
-		titles = ['adap mean', 'adap gauss', 'orig', 'adap mean seg', 'adap gauss seg']
-		for i in range(len(images)):
-		    plt.subplot(2,len(images)//2 + 1,i+1),plt.imshow(images[i],'gray')
-		    plt.title(titles[i])
-		    plt.xticks([]),plt.yticks([])
-		plt.show()
+		#images = [adap_mean, adap_gauss, gray, gray * adap_mean, gray * adap_gauss]
+		#titles = ['adap mean', 'adap gauss', 'orig', 'adap mean seg', 'adap gauss seg']
+		#for i in range(len(images)):
+		#    plt.subplot(2,len(images)//2 + 1,i+1),plt.imshow(images[i],'gray')
+		#    plt.title(titles[i])
+		#    plt.xticks([]),plt.yticks([])
+		#plt.show()
 
 		corners = find_corners(adap_mean)
 
-		corner_mat = np.zeros_like(adap_mean)
-		for coords in corners:
-			print(np.int32(coords))
-			print(corner_mat.shape)
-			corner_mat[tuple(np.int32(coords))] = 1
-		corner_mat = np.uint8(cv.dilate(corner_mat, np.ones((10,10)))) # just for visual effect
-		corners_found = np.copy(gray)
-		print(corner_mat.max())
-		print(stats(corners_found))
-		corners_found[corner_mat == 1] = 0
-		print(stats(corners_found))
+		#corner_mat = np.zeros_like(adap_mean)
+		#for coords in corners:
+			#print(np.int32(coords))
+			#print(corner_mat.shape)
+		#	corner_mat[tuple(np.int32(coords))] = 1
+		#corner_mat = np.uint8(cv.dilate(corner_mat, np.ones((10,10)))) # just for visual effect
+		#corners_found = np.copy(gray)
+		#print(corner_mat.max())
+		#print(stats(corners_found))
+		#corners_found[corner_mat == 1] = 0
+		#print(stats(corners_found))
 
 
 		#plt.imshow(corner_mat, 'gray')
 		#plt.show()
-		plt.imshow(corners_found, 'gray')
-		plt.show()
+		#plt.imshow(corners_found, 'gray')
+		#plt.show()
 
+		corners = np.float32([list(corn)[::-1] for corn in corners])
+		from deskew import calculate_deskew, deskew_transform
+		transform = calculate_deskew(corners)
+		tmp = deskew_transform(gray, transform)
+		#plt.imshow(tmp, 'gray')
+		#plt.show()
+
+		dst = deskew_transform(gray * adap_mean, transform)
+		mask = deskew_transform(adap_mean, transform)
+		#images = [dst, mask]
+		#titles = ['deskewed image', 'deskewed mask']
+		#for i in range(len(images)):
+		#    plt.subplot(2,len(images)//2 + 1,i+1),plt.imshow(images[i],'gray')
+		#    plt.title(titles[i])
+		#    plt.xticks([]),plt.yticks([])
+		#plt.show()
+		ul, ur, lr, ll = find_corners(mask)
+		new_img = dst[ul[0]:lr[0], ul[1]:lr[1]]
+		#plt.imshow(new_img, 'gray')
+		#plt.show()
+		return new_img, transform
 	else:
 
 		img = cv.imread('./raw_img_data/puzzle_pieces.png',0)
@@ -141,6 +172,17 @@ def segment_reference(ref_img, method):
 		    plt.xticks([]),plt.yticks([])
 		plt.show()
 
+# input is any image of scattered puzzle pieces on a table,
+# output is a list of binary masks the same size as the image, one for each puzzle piece
+def segment_pieces(img, transform=None):
+	from deskew import deskew_transform
+	print(stats(img))
+	plt.imshow(img)
+	plt.show()
+	if transform is not None:
+		img = deskew_transform(img, transform)
+	plt.imshow(img)
+	plt.show()
 
 def stats(img):
 	return {'mean': np.mean(img),
@@ -151,13 +193,27 @@ def stats(img):
 			}
 
 
-def main():
+def main_reference():
 	parser = argparse.ArgumentParser(description='specify which file(s) to segment')
-	parser.add_argument('file', type=str, nargs='?', default='./raw_img_data/puzzle_pieces.png')
+	parser.add_argument('file', type=str, nargs='?', default='./reference_data/img0.png')
 	args = parser.parse_args()
 	ref_img = cv.imread(args.file)
-	segment_reference(ref_img, 'evan')
+	#plt.imshow(ref_img)
+	#plt.show()
+	new_img, transform = segment_reference(ref_img, 'evan')
+	plt.imshow(new_img)
+	plt.show()
 
+def main_pieces():
+	parser = argparse.ArgumentParser(description='specify which file(s) to segment')
+	parser.add_argument('file', type=str, nargs='?', default='./raw_img_data/puzzle_pieces.png')
+	parser.add_argument('--ref', type=str, nargs='?', default='./reference_data/img0.png')
+	args = parser.parse_args()
+	ref_img = cv.imread(args.ref)
+	topdown_ref, transform = segment_reference(ref_img, 'evan')
+
+	p_img = cv.imread(args.file)
+	segment_pieces(p_img, transform)
 
 if __name__ == '__main__':
-	main()
+	main_reference()
