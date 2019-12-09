@@ -7,7 +7,7 @@ class Piece:
         self.img = cv.imread(img_path)
         self.find_initial_position(self.img)
 
-    #Finds and setsthe initial pixel position of piece from the piece image and reference image
+    #Finds and sets the initial pixel position of piece from the piece image and reference image
     def find_initial_position(self, img):
         #self.init_pos = (0, 0)
         pass
