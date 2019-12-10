@@ -14,7 +14,7 @@ def calculate_deskew(corners, ratio=1.403):
 	return cv.getPerspectiveTransform(corners, pts)
 
 
-#Plots and returns the deskewed version of an image given the image and transform
+#Returns the deskewed version of an image given the image and transform
 def deskew_transform(img, transform, new_width=2560, new_height=1440):
     rows, cols = img.shape[0], img.shape[1]
     transformed = np.zeros((new_width, new_height), dtype=np.uint8)
@@ -24,20 +24,6 @@ def deskew_transform(img, transform, new_width=2560, new_height=1440):
     plt.xticks([]),plt.yticks([])
     plt.show()
     return deskewed
-
-
-#Assumes A4 paper is in landscape position once deskewed, calculates pixels per meter
-def calibrate_ppm(deskewed_mask):
-	corners = find_corners(deskewed_mask)
-	corners = np.float32([list(corn)[::-1] for corn in corners])
-	#dimensions of paper in meters
-	x_length = .2794
-	y_length = .2159
-	side_ppi = [(corners[1][0] - corners[0][0]) / x_length,
-				 (corners[2][0] - corners[3][0]) / x_length,
-				 (corners[0][1] - corners[3][1]) / y_length,
-				 (corners[1][1] - corners[2][1]) / y_length]
-	return np.mean(side_ppi)
 
 
 def main():
