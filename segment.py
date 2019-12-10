@@ -244,5 +244,38 @@ def main_pieces():
 	p_img = cv.imread(args.file)
 	segment_pieces(p_img, transform=transform)
 
+def main_test():
+	from piece import Piece
+	parser = argparse.ArgumentParser(description='specify which file(s) to used for testing')
+	parser.add_argument('file', type=str, nargs='?', default='./individual_pieces/img0.png')
+	parser.add_argument('--cut_img', type=str, nargs='?', default='./individual_pieces/cropped_img0.png')
+	parser.add_argument('--ref', type=str, nargs='?', default='./raw_img_data/full_puzzle.png')
+	args = parser.parse_args()
+	ref_img = cv.imread(args.ref)
+	cut_img = cv.imread(args.cut_img)
+	new_img, transform = segment_reference(ref_img, 'evan')
+
+	pre = preproc(cut_img)
+	from deskew import deskew_transform
+	dsk_cut_img = deskew_transform(pre, transform)
+
+	first_thresh = cv.adaptiveThreshold(dsk_cut_img, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 51, 0)
+	blockSize = 10
+	kernel = np.ones((blockSize,blockSize),np.uint8)
+	closed = cv.morphologyEx(np.float32(first_thresh), cv.MORPH_CLOSE, kernel)
+	dsk_cut_mask = fill_holes(np.uint8(closed))
+
+	contours, _ = cv.findContours(dsk_cut_mask, cv.RETR_LIST, cv.CHAIN_APPROX_NONE)
+
+	assert len(contours) == 1
+	ct = contours[0]
+	x,y,w,h = cv.boundingRect(ct)
+
+	final_cut = dsk_cut_img[y:y+h, x:x+w]
+	#plt.imshow(final_cut, 'gray')
+	#plt.show()
+	p = Piece(args.file, cut_img=final_cut)
+	p.solve_piece(new_img) # TODO: replace with ref_img
+
 if __name__ == '__main__':
-	main_pieces()
+	main_test()
