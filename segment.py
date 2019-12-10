@@ -36,7 +36,7 @@ def fill_holes(img):
 #NOTE: img should be grayscale. see:
 #https://docs.opencv.org/2.4/modules/imgproc/doc/miscellaneous_transformations.html?highlight=adaptivethreshold
 adap_types = {'mean': cv.ADAPTIVE_THRESH_MEAN_C, 'gaussian': cv.ADAPTIVE_THRESH_GAUSSIAN_C}
-def calc_reference_mask(img, adap_type='mean', blockSize=11, C=2):
+def calc_reference_mask(img, adap_type='mean', blockSize=11, C=2, dilation_fac=15):
 
 	#simple adaptive binary thresholding on a (blurred) grayscale image
 	first_thresh = cv.adaptiveThreshold(img, 255, adap_types[adap_type], cv.THRESH_BINARY, blockSize, C)
@@ -52,7 +52,7 @@ def calc_reference_mask(img, adap_type='mean', blockSize=11, C=2):
 	#			 of the image will have its 0's replaced by some label as well.
 	connectivity = 8
 	num_labels, labels, stats, centroids = cv.connectedComponentsWithStats(first_thresh , connectivity , cv.CV_32S)
-	
+
 	# sorting connected components by area
 	areas = sorted([(i, stat[cv.CC_STAT_AREA], centroids[i]) for i, stat in enumerate(stats)], key = lambda x:x[1])
 	#print(areas[-5:])
@@ -73,14 +73,14 @@ def calc_reference_mask(img, adap_type='mean', blockSize=11, C=2):
 
 	# one last dilation; we'd rather get a bit extra than miss parts of the puzzle
 	# NOTE: increase this if a bit of the puzzle is getting cut off
-	dilation_fac = 15
+	#dilation_fac = 15
 	puzzle_mask = cv.dilate(puzzle_mask, np.ones((dilation_fac, dilation_fac)))
 	return puzzle_mask
 
 def preproc(img):
 	return cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
-def reference_mask(gray):
+def reference_mask(gray, dilation_fac=15):
 	#calc mask
 	#print(stats(gray))
 	blockSize= 101
@@ -88,7 +88,7 @@ def reference_mask(gray):
 
 	gray2 = cv.medianBlur(gray,41) # TODO: change 41 to a parameter... or maybe half of blocksize?
 
-	adap_mean = calc_reference_mask(gray2, adap_type='mean', blockSize=blockSize, C=C)
+	adap_mean = calc_reference_mask(gray2, adap_type='mean', blockSize=blockSize, C=C, dilation_fac=dilation_fac)
 	#adap_gauss = calc_reference_mask(gray2, adap_type='gaussian', blockSize=blockSize, C=C)
 	return adap_mean
 
