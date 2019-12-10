@@ -303,6 +303,7 @@ def main_calibration():
 	parser.add_argument('file', type=str, nargs='?', default='./raw_img_data/img0.png')
 	args = parser.parse_args()
 	paper_img = cv.imread(args.file)
+	print(paper_calibration(paper_img))
 
 if __name__ == '__main__':
 	main_test()
