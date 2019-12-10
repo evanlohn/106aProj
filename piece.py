@@ -27,7 +27,7 @@ class Piece:
 
         for i, rot in enumerate(rotation_angles):
             rot_piece = imutils.rotate_bound(piece, rot)
-            plt.imshow(rot_piece)
+            #plt.imshow(rot_piece)
             #plt.title('Piece {} of {}'.format(i+1, n))
             #plt.show()
             #position, confidence = argmax_convolve(rot_piece, ref_img)
@@ -40,7 +40,9 @@ class Piece:
     def place(self, init_pos, final_pos, rot_delta):
         pass
 
-# origin is the pixel coordinates of the origin of the table frame (extracted by calibrate_ppm)
+
+
+# origin is the pixel coordinates (x, y) of the origin of the table frame (extracted by calibrate_ppm)
 # pixel_loc is the pixel coordinates of the pixel we want to determine
 # ppm is pixels per meter, found in calibrate_ppm
 def pixel_to_table_frame(origin, pixel_loc, ppm):
