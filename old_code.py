@@ -46,3 +46,14 @@ def find_corners(img, blockSize, sobel_k=3, harris_k=0.04, thresh=0.35):
 	print(corner_coords)
 	print(img.shape)
 	return corner_coords
+
+"""
+	neg = 1 - adap_mean
+	#plt.imshow(neg, 'gray')
+	#plt.show()
+	ignore_calibration_item = gray * neg #+ (gray[inds[0]][inds[1]]) * adap_mean
+
+	#print(stats(ignore_calibration_item))
+	#print(ignore_calibration_item[:5,:5])
+	table_mask = segment_table(ignore_calibration_item)
+"""

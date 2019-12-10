@@ -36,10 +36,15 @@ def fill_holes(img):
 #NOTE: img should be grayscale. see:
 #https://docs.opencv.org/2.4/modules/imgproc/doc/miscellaneous_transformations.html?highlight=adaptivethreshold
 adap_types = {'mean': cv.ADAPTIVE_THRESH_MEAN_C, 'gaussian': cv.ADAPTIVE_THRESH_GAUSSIAN_C}
-def calc_reference_mask(img, adap_type='mean', blockSize=11, C=2):
+def calc_reference_mask(img, adap_type='mean', blockSize=11, C=2, invert=False, debug=False):
 
+	threshold_type = cv.THRESH_BINARY_INV if invert else cv.THRESH_BINARY
 	#simple adaptive binary thresholding on a (blurred) grayscale image
-	first_thresh = cv.adaptiveThreshold(img, 255, adap_types[adap_type], cv.THRESH_BINARY, blockSize, C)
+	first_thresh = cv.adaptiveThreshold(img, 255, adap_types[adap_type], threshold_type, blockSize, C)
+
+	if debug:
+		plt.imshow(first_thresh, 'gray')
+		plt.show()
 
 	# the puzzle blob isn't homogenous, so some pieces will have some black in them. So, we fill those holes with white.
 	first_thresh = fill_holes(first_thresh)
@@ -80,15 +85,24 @@ def calc_reference_mask(img, adap_type='mean', blockSize=11, C=2):
 def preproc(img):
 	return cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
-def reference_mask(gray):
+
+# more negative values are a *bit* more inclusive...
+def reference_mask(gray, C=-10, blockSize= 101, invert=False, blur=41, debug=False):
 	#calc mask
 	#print(stats(gray))
-	blockSize= 101
-	C = -10 # more negative values are a *bit* more inclusive...
+	
+	
 
-	gray2 = cv.medianBlur(gray,41) # TODO: change 41 to a parameter... or maybe half of blocksize?
+	gray = np.uint8(gray)
+	if debug:
+		print(stats(np.uint8(gray)))
+	gray2 = cv.medianBlur(gray,blur) # TODO: change 41 to a parameter... or maybe half of blocksize?
 
-	adap_mean = calc_reference_mask(gray2, adap_type='mean', blockSize=blockSize, C=C)
+	if debug:
+		plt.imshow(gray2, 'gray')
+		plt.show()
+
+	adap_mean = calc_reference_mask(gray2, adap_type='mean', invert=invert, blockSize=blockSize, C=C, debug=debug)
 	#adap_gauss = calc_reference_mask(gray2, adap_type='gaussian', blockSize=blockSize, C=C)
 	return adap_mean
 
@@ -172,17 +186,31 @@ def segment_reference(ref_img, method):
 		    plt.xticks([]),plt.yticks([])
 		plt.show()
 
+#TODO: change to 11/8.5
+def transform_from_calibration(img, aspect_ratio=1.421):
+	gray = preproc(img)
+	adap_mean = reference_mask(gray) # TODO: might need to change this a bit to segment the paper
+
+	corners = find_corners(adap_mean)
+	corners = np.float32([list(corn)[::-1] for corn in corners])
+	from deskew import calculate_deskew, deskew_transform
+	transform = calculate_deskew(corners, ratio=aspect_ratio)
+	tmp = deskew_transform(gray, transform)
+	dsk_mask = deskew_transform(adap_mean, transform)
+
+	return transform, dsk_mask
+
 # input is any image of scattered puzzle pieces on a table,
 # output is a list of binary masks the same size as the image, one for each puzzle piece
 def segment_pieces(img, transform=None):
 	from deskew import deskew_transform
-	print(stats(img))
-	plt.imshow(img)
-	plt.show()
+	#print(stats(img))
+	#plt.imshow(img)
+	#plt.show()
 	if transform is not None:
 		img = deskew_transform(img, transform)
-	plt.imshow(img)
-	plt.show()
+	#plt.imshow(img)
+	#plt.show()
 
 def stats(img):
 	return {'mean': np.mean(img),
@@ -190,12 +218,13 @@ def stats(img):
 			'max': np.max(img),
 			'min': np.min(img),
 			'size': img.shape,
+			'dtype': img.dtype
 			}
 
 
 def main_reference():
 	parser = argparse.ArgumentParser(description='specify which file(s) to segment')
-	parser.add_argument('file', type=str, nargs='?', default='./reference_data/img0.png')
+	parser.add_argument('file', type=str, nargs='?', default='./raw_img_data/full_puzzle.png')
 	args = parser.parse_args()
 	ref_img = cv.imread(args.file)
 	#plt.imshow(ref_img)
@@ -206,14 +235,14 @@ def main_reference():
 
 def main_pieces():
 	parser = argparse.ArgumentParser(description='specify which file(s) to segment')
-	parser.add_argument('file', type=str, nargs='?', default='./raw_img_data/puzzle_pieces.png')
-	parser.add_argument('--ref', type=str, nargs='?', default='./reference_data/img0.png')
+	parser.add_argument('file', type=str, nargs='?', default='./individual_pieces/img0.png')
+	parser.add_argument('--ref', type=str, nargs='?', default='./raw_img_data/full_puzzle.png')
 	args = parser.parse_args()
 	ref_img = cv.imread(args.ref)
-	topdown_ref, transform = segment_reference(ref_img, 'evan')
+	transform, dsk_mask = transform_from_calibration(ref_img)
 
 	p_img = cv.imread(args.file)
-	segment_pieces(p_img, transform)
+	segment_pieces(p_img, transform=transform)
 
 if __name__ == '__main__':
-	main_reference()
+	main_pieces()
