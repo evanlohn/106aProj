@@ -189,8 +189,8 @@ def segment_reference(ref_img, method):
 def paper_calibration(img):
 	transform, dsk_mask = transform_from_paper(img)
 	corners = find_corners(dsk_mask)
-	corners = np.float32([list(corn)[::-1] for corn in corners])
 	origin = corners[0]
+	corners = np.float32([list(corn)[::-1] for corn in corners])
 	ppm = calculate_ppm(corners)
 	return origin, ppm
 
