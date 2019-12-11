@@ -6,16 +6,11 @@ from contrast import increase_contrast
 
 class Piece:
 
-    #Initializes a piece with the deskewed image of the piece.
-    def __init__(self, img_path, cut_img=None):
-        self.img = cv.imread(img_path)
-        self.find_initial_position(self.img)
-        self.cut_img = cut_img # temporary placeholder; this should be calculated via piece segmentation
-
-    #Finds and sets the initial pixel position of piece from the piece image and reference image
-    def find_initial_position(self, img):
-        #self.init_pos = (0, 0)
-        pass
+    #Initializes a piece with the deskewed, segmented image of the piece,
+    # as well as the piece's initial pixel location in image coordinates (row, col)
+    def __init__(self, img, init_pos):
+        self.img = img
+        self.init_pos = init_pos
 
     #Solves and sets the final pixel position and rotation delta
     def solve_piece(self, ref_img):
@@ -39,7 +34,10 @@ class Piece:
         pass
 
     #Places the piece using Baxter/Sawyer
-    def place(self, init_pos, final_pos, rot_delta):
+    def place(self):
+        # self.init_pos should have the initial pixel position
+        # self.final_pos should have the final pixel position
+        # self.rot_delta has the amount of rotation about the z axis necessary
         pass
 
 def argmax_convolve(rot_piece, ref_img):
