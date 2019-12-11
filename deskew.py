@@ -19,10 +19,10 @@ def deskew_transform(img, transform, new_width=2560, new_height=1440):
     rows, cols = img.shape[0], img.shape[1]
     transformed = np.zeros((new_width, new_height), dtype=np.uint8)
     deskewed = cv.warpPerspective(img, transform, transformed.shape)
-    plt.imshow(deskewed,'gray')
-    plt.title("Deskewed")
-    plt.xticks([]),plt.yticks([])
-    plt.show()
+    #plt.imshow(deskewed,'gray')
+    #plt.title("Deskewed")
+    #plt.xticks([]),plt.yticks([])
+    #plt.show()
     return deskewed
 
 
