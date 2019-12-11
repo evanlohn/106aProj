@@ -7,14 +7,14 @@ from segment import preproc, reference_mask, find_corners
 
 #Returns the deskew transformation. Requires the corners and aspect ratio of the reference image.
 #corners is an np.float32([top_left, top_right, bottom_right, bottom_left]) of pixel positions
-def calculate_deskew(corners, ratio=1.421):
+def calculate_deskew(corners, ratio=1.403):
 	height = math.sqrt((corners[2][0] - corners[1][0])**2 + (corners[2][1] - corners[1][1])**2)
 	width = ratio * height
 	pts = np.float32([[corners[0][0],corners[0][1]], [corners[0][0] + width, corners[0][1]], [corners[0][0] + width, corners[0][1] + height], [corners[0][0], corners[0][1] + height]])
 	return cv.getPerspectiveTransform(corners, pts)
 
 
-#Plots and returns the deskewed version of an image given the image and transform
+#Returns the deskewed version of an image given the image and transform
 def deskew_transform(img, transform, new_width=2560, new_height=1440):
     rows, cols = img.shape[0], img.shape[1]
     transformed = np.zeros((new_width, new_height), dtype=np.uint8)
@@ -31,8 +31,6 @@ def main():
 	parser.add_argument('file', type=str, nargs='?', default='./reference_data/img0.png')
 	args = parser.parse_args()
 	ref_img = cv.imread(args.file)
-	#TODO: Get corners programmatically
-	#corners = np.float32([[484, 205], [1311, 227], [1374, 793], [314, 749]])
 	ref_img = preproc(ref_img) # for now, just grayscales
 	adap_mean = reference_mask(ref_img)
 	corners = find_corners(adap_mean)
