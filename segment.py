@@ -326,7 +326,7 @@ def main_test():
 
 	plt.imshow(final_cut, 'gray')
 	plt.show()
-	p = Piece(args.file, cut_img=final_cut/(np.sum(final_cut) + 1))
+	p = Piece(final_cut/(np.sum(final_cut) + 1), np.array([300,400]))
 
 	from deskew import deskew_transform
 	ref = new_img  # new_img is the segmented reference
