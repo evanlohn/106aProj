@@ -1,6 +1,8 @@
 import cv2 as cv
 import imutils
 from matplotlib import pyplot as plt
+import numpy as np
+from contrast import increase_contrast
 
 class Piece:
 
@@ -30,7 +32,7 @@ class Piece:
             #plt.imshow(rot_piece)
             #plt.title('Piece {} of {}'.format(i+1, n))
             #plt.show()
-            #position, confidence = argmax_convolve(rot_piece, ref_img)
+            position, confidence = argmax_convolve(rot_piece, ref_img)
 
         #self.final_pos = (x, y)
         #self.rot_delta = 0
@@ -40,7 +42,32 @@ class Piece:
     def place(self, init_pos, final_pos, rot_delta):
         pass
 
+def argmax_convolve(rot_piece, ref_img):
 
+
+    conv_res = cv.filter2D(ref_img, -1, rot_piece)
+    assert conv_res.shape == ref_img.shape, str('shapes differ: conv is {}, ref is {}'.format(conv_res.shape, ref.shape))
+
+    inds = np.unravel_index(np.argmax(conv_res), conv_res.shape)
+    confidence = conv_res[inds[0]][inds[1]]
+
+    images = [conv_res, ref_img, rot_piece]
+    titles = ['convolution: max conf {}'.format(confidence), 'reference', 'piece']
+    for i in range(len(images)):
+        plt.subplot(2,len(images)//2 + 1,i+1),plt.imshow(images[i],'gray')
+        if i < 2:
+            plt.subplot(2,len(images)//2 + 1,i+1),plt.plot(inds[1], inds[0], 'r+')
+        plt.title(titles[i])
+        #plt.xticks([]),plt.yticks([])
+
+    plt.show()
+
+    #TODO: only look at the argmax over small sections corresponding to piece centers
+
+
+
+    return inds, confidence
+    #return position, confidence
 
 # origin is the pixel coordinates (x, y) of the origin of the table frame (extracted by calibrate_ppm)
 # pixel_loc is the pixel coordinates of the pixel we want to determine

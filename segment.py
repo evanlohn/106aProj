@@ -3,6 +3,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import argparse
 import math
+from contrast import increase_contrast
 
 
 #finds the (potentially rotated) rectangular corners in a black/white image
@@ -269,11 +270,20 @@ def main_test():
 	from piece import Piece
 	parser = argparse.ArgumentParser(description='specify which file(s) to used for testing')
 	parser.add_argument('file', type=str, nargs='?', default='./individual_pieces/img0.png')
-	parser.add_argument('--cut_img', type=str, nargs='?', default='./individual_pieces/cropped_img0.png')
+	parser.add_argument('--cut_img', type=str, nargs='?', default='./individual_pieces/extra_cropped_img00.png')
 	parser.add_argument('--ref', type=str, nargs='?', default='./raw_img_data/full_puzzle.png')
 	args = parser.parse_args()
-	ref_img = cv.imread(args.ref)
+	ref_img = increase_contrast(cv.imread(args.ref))
 	cut_img = cv.imread(args.cut_img)
+
+	print(stats(cut_img))
+
+	other = cv.imread('./individual_pieces/cropped_img0.png')
+
+	#print(stats(other - cut_img))
+	#print(args.cut_img)
+	#print(cut_img[720:730, 520:530])
+
 	new_img, transform = segment_reference(ref_img, 'evan')
 
 	pre = preproc(cut_img)
@@ -281,22 +291,47 @@ def main_test():
 	dsk_cut_img = deskew_transform(pre, transform)
 
 	first_thresh = cv.adaptiveThreshold(dsk_cut_img, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 51, 0)
+	plt.imshow(first_thresh, 'gray')
+	plt.show()
 	blockSize = 10
 	kernel = np.ones((blockSize,blockSize),np.uint8)
 	closed = cv.morphologyEx(np.float32(first_thresh), cv.MORPH_CLOSE, kernel)
 	dsk_cut_mask = fill_holes(np.uint8(closed))
+	plt.imshow(dsk_cut_mask, 'gray')
+	plt.show()
 
-	contours, _ = cv.findContours(dsk_cut_mask, cv.RETR_LIST, cv.CHAIN_APPROX_NONE)
+	connectivity = 8
+	num_labels, labels, statistics, centroids = cv.connectedComponentsWithStats(dsk_cut_mask, connectivity, cv.CV_32S)
+
+	# sorting connected components by area
+	areas = sorted([(i, stat[cv.CC_STAT_AREA], centroids[i]) for i, stat in enumerate(statistics)], key = lambda x:x[1])
+
+	piece = areas[-2] # the biggest area is the background, typically.
+	#print(stats)
+	#print(centroids[:5])
+	dsk_cut_mask = (labels == piece[0])
+	#kernel = np.ones((30,30))
+	#dsk_cut_mask =  dsk_cut_mask * cv.morphologyEx(np.float32(dsk_cut_mask > 0), cv.MORPH_CLOSE, kernel)
+	#plt.imshow(dsk_cut_mask)
+	#plt.show()
+
+	#print(stats(np.uint8(dsk_cut_mask)))
+	contours, _ = cv.findContours(np.uint8(dsk_cut_mask), cv.RETR_LIST, cv.CHAIN_APPROX_NONE)
 
 	assert len(contours) == 1
 	ct = contours[0]
 	x,y,w,h = cv.boundingRect(ct)
 
 	final_cut = dsk_cut_img[y:y+h, x:x+w]
-	#plt.imshow(final_cut, 'gray')
-	#plt.show()
-	p = Piece(args.file, cut_img=final_cut)
-	p.solve_piece(new_img) # TODO: replace with ref_img
+
+	plt.imshow(final_cut, 'gray')
+	plt.show()
+	p = Piece(args.file, cut_img=final_cut/(np.sum(final_cut) + 1))
+
+	from deskew import deskew_transform
+	ref = new_img  # new_img is the segmented reference
+	print(stats(ref))
+	p.solve_piece(ref) # TODO: replace with ref_img
 
 def main_calibration():
 	parser = argparse.ArgumentParser(description='specify which file(s) to segment')
