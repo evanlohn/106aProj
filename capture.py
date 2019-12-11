@@ -8,6 +8,8 @@ cap = cv2.VideoCapture(0)
 
 def mkFileNamer(pth, fname):
     il = [0]
+    if not os.path.exists(pth):
+        os.mkdir(pth)
     def newFileName():
     	i = il[0]
         full_path = os.path.join(pth, fname + str(i) + ".png")

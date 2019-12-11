@@ -1,3 +1,8 @@
+import sys
+if sys.version[0] != '2':
+    print('please run all code with python2!')
+    exit(0)
+
 import cv2 as cv
 import imutils
 from matplotlib import pyplot as plt

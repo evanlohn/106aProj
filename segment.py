@@ -1,10 +1,30 @@
+import sys
+if sys.version[0] != '2':
+	print('please run all code with python2!')
+	exit(0)
+
+cant_plot= True
+
 import cv2 as cv
 import numpy as np
+from capture import mkFileNamer
+if cant_plot:
+	import matplotlib
+	matplotlib.use("Agg")
+	fnamer = mkFileNamer('./tmp_images', 'tmp')
 from matplotlib import pyplot as plt
 import argparse
 import math
 from contrast import increase_contrast
 
+
+
+def imshow(img, cmap='gray'):
+	plt.imshow(img, cmap)
+	if cant_plot:
+		plt.savefig(fnamer())
+	else:
+		plt.show()
 
 #finds the (potentially rotated) rectangular corners in a black/white image
 def find_corners(img):
@@ -37,15 +57,22 @@ def fill_holes(img):
 #NOTE: img should be grayscale. see:
 #https://docs.opencv.org/2.4/modules/imgproc/doc/miscellaneous_transformations.html?highlight=adaptivethreshold
 adap_types = {'mean': cv.ADAPTIVE_THRESH_MEAN_C, 'gaussian': cv.ADAPTIVE_THRESH_GAUSSIAN_C}
-def calc_reference_mask(img, adap_type='mean', blockSize=11, C=2, invert=False, debug=False, dilation_fac=15):
+def calc_reference_mask(img, adap_type='mean', blockSize=11, C=2, invert=False, debug=False, dilation_fac=15, thresh_type='adap', manual_thresh=200):
 
 	threshold_type = cv.THRESH_BINARY_INV if invert else cv.THRESH_BINARY
-	#simple adaptive binary thresholding on a (blurred) grayscale image
-	first_thresh = cv.adaptiveThreshold(img, 255, adap_types[adap_type], threshold_type, blockSize, C)
+	if debug:
+		imshow(img)
+
+
+	if thresh_type == 'adap':
+		#simple adaptive binary thresholding on a (blurred) grayscale image
+		first_thresh = cv.adaptiveThreshold(img, 255, adap_types[adap_type], threshold_type, blockSize, C)
+	else:
+		ret, first_thresh = cv.threshold(img,manual_thresh,255,cv.THRESH_BINARY)
 
 	if debug:
-		plt.imshow(first_thresh, 'gray')
-		plt.show()
+		imshow(first_thresh, 'gray')
+
 
 	# the puzzle blob isn't homogenous, so some pieces will have some black in them. So, we fill those holes with white.
 	first_thresh = fill_holes(first_thresh)
@@ -86,7 +113,7 @@ def calc_reference_mask(img, adap_type='mean', blockSize=11, C=2, invert=False, 
 def preproc(img):
 	return cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
-def reference_mask(gray, C=-10, blockSize= 101, invert=False, blur=41, debug=False, dilation_fac=15):
+def reference_mask(gray, C=-10, blockSize= 101, invert=False, blur=41, debug=False, dilation_fac=15, thresh_type='adap', manual_thresh=200):
 	#calc mask
 	#print(stats(gray))
 
@@ -98,10 +125,9 @@ def reference_mask(gray, C=-10, blockSize= 101, invert=False, blur=41, debug=Fal
 	gray2 = cv.medianBlur(gray,blur) # TODO: change 41 to a parameter... or maybe half of blocksize?
 
 	if debug:
-		plt.imshow(gray2, 'gray')
-		plt.show()
+		imshow(gray2, 'gray')
 
-	adap_mean = calc_reference_mask(gray2, adap_type='mean', invert=invert, blockSize=blockSize, C=C, debug=debug, dilation_fac=dilation_fac)
+	adap_mean = calc_reference_mask(gray2, adap_type='mean', invert=invert, blockSize=blockSize, C=C, debug=debug, dilation_fac=dilation_fac, thresh_type=thresh_type, manual_thresh=manual_thresh)
 	#adap_gauss = calc_reference_mask(gray2, adap_type='gaussian', blockSize=blockSize, C=C)
 	return adap_mean
 
@@ -183,7 +209,10 @@ def segment_reference(ref_img, method):
 		    plt.subplot(2,2,i+1),plt.imshow(images[i],'gray')
 		    plt.title(titles[i])
 		    plt.xticks([]),plt.yticks([])
-		plt.show()
+		if cant_plot:
+			plt.savefig('tmp.png')
+		else:
+			plt.show()
 
 
 #Returns the origin pixel position and ppm (pixels per meter) from paper image
@@ -193,13 +222,15 @@ def paper_calibration(img):
 	origin = corners[0]
 	corners = np.float32([list(corn)[::-1] for corn in corners])
 	ppm = calculate_ppm(corners)
-	return origin, ppm
+	return origin, ppm, transform
 
 
 #Calculates ppm from corners of DESKEWED paper mask
 def calculate_ppm(corners):
 	#dimensions of paper in meters, assumes landscape orientation
-	dimensions = [.2794, .2159]
+	#dimensions = [.2794, .2159]
+	#dimensions of paper in meters, assumes portrait orientation
+	dimensions = [.2159, .2794]
 	side_ppm = [(corners[1][0] - corners[0][0]) / dimensions[0],
 				 (corners[2][0] - corners[3][0]) / dimensions[0],
 				 (corners[3][1] - corners[0][1]) / dimensions[1],
@@ -208,9 +239,14 @@ def calculate_ppm(corners):
 
 
 #Obtains the deskew transform and deskewed paper mask from the paper image
-def transform_from_paper(img, aspect_ratio=1.294):
+a1 = 8.5/11
+a2 = 11/8.5
+def transform_from_paper(img, aspect_ratio=a1):
 	gray = preproc(img)
-	adap_mean = reference_mask(gray) # TODO: might need to change this a bit to segment the paper
+	imshow(img)
+	adap_mean = reference_mask(gray, blur=5, debug=False, thresh_type='manual', manual_thresh=200) # TODO: might need to change this a bit to segment the paper
+
+	#imshow(adap_mean)
 
 	corners = find_corners(adap_mean)
 	corners = np.float32([list(corn)[::-1] for corn in corners])
@@ -218,6 +254,8 @@ def transform_from_paper(img, aspect_ratio=1.294):
 	transform = calculate_deskew(corners, ratio=aspect_ratio)
 	tmp = deskew_transform(gray, transform)
 	dsk_mask = deskew_transform(adap_mean, transform)
+
+	#imshow(dsk_mask)
 
 	return transform, dsk_mask
 
@@ -245,14 +283,15 @@ def stats(img):
 
 def main_reference():
 	parser = argparse.ArgumentParser(description='specify which file(s) to segment')
-	parser.add_argument('file', type=str, nargs='?', default='./raw_img_data/full_puzzle.png')
+	parser.add_argument('file', type=str, nargs='?', default='./raw_img_data/calib.png')
 	args = parser.parse_args()
 	ref_img = cv.imread(args.file)
 	#plt.imshow(ref_img)
 	#plt.show()
 	new_img, transform = segment_reference(ref_img, 'evan')
-	plt.imshow(new_img)
-	plt.show()
+	print(stats(new_img))
+
+	imshow(new_img)
 
 def main_pieces():
 	parser = argparse.ArgumentParser(description='specify which file(s) to segment')
@@ -269,36 +308,49 @@ def main_pieces():
 def main_test():
 	from piece import Piece
 	parser = argparse.ArgumentParser(description='specify which file(s) to used for testing')
-	parser.add_argument('file', type=str, nargs='?', default='./individual_pieces/img0.png')
-	parser.add_argument('--cut_img', type=str, nargs='?', default='./individual_pieces/extra_cropped_img00.png')
+	parser.add_argument('file', type=str, nargs='?', default='./individual_pieces/img3.png')
+	parser.add_argument('--prev_state', type=str, nargs='?', default='./raw_img_data/empty_table.png')
+
+	#parser.add_argument('--cut_img', type=str, nargs='?', default='./individual_pieces/extra_cropped_img00.png')
 	parser.add_argument('--ref', type=str, nargs='?', default='./raw_img_data/full_puzzle.png')
+	parser.add_argument('--cal', type=str, nargs='?', default='./raw_img_data/calib.png')
+
 	args = parser.parse_args()
 	ref_img = increase_contrast(cv.imread(args.ref))
-	cut_img = cv.imread(args.cut_img)
 
+	calib = cv.imread(args.cal)
+	origin, ppm, transform = paper_calibration(calib)
+
+	prev_state = cv.imread(args.prev_state)
+	curr_state = cv.imread(args.file)
+
+	cut_img = segment_pieces(curr_state, transform)
 	print(stats(cut_img))
 
 	other = cv.imread('./individual_pieces/cropped_img0.png')
 
+	
 	#print(stats(other - cut_img))
 	#print(args.cut_img)
 	#print(cut_img[720:730, 520:530])
 
-	new_img, transform = segment_reference(ref_img, 'evan')
+	new_img, _ = segment_reference(ref_img, 'evan')
 
 	pre = preproc(cut_img)
+	imshow(pre)
 	from deskew import deskew_transform
 	dsk_cut_img = deskew_transform(pre, transform)
 
+	imshow(dsk_cut_img)
+
 	first_thresh = cv.adaptiveThreshold(dsk_cut_img, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 51, 0)
-	plt.imshow(first_thresh, 'gray')
-	plt.show()
+	#imshow(first_thresh, 'gray')
+
 	blockSize = 10
 	kernel = np.ones((blockSize,blockSize),np.uint8)
 	closed = cv.morphologyEx(np.float32(first_thresh), cv.MORPH_CLOSE, kernel)
 	dsk_cut_mask = fill_holes(np.uint8(closed))
-	plt.imshow(dsk_cut_mask, 'gray')
-	plt.show()
+	#imshow(dsk_cut_mask, 'gray')
 
 	connectivity = 8
 	num_labels, labels, statistics, centroids = cv.connectedComponentsWithStats(dsk_cut_mask, connectivity, cv.CV_32S)
@@ -324,14 +376,14 @@ def main_test():
 
 	final_cut = dsk_cut_img[y:y+h, x:x+w]
 
-	plt.imshow(final_cut, 'gray')
-	plt.show()
+	imshow(final_cut, 'gray')
+
 	p = Piece(final_cut/(np.sum(final_cut) + 1), np.array([300,400]))
 
 	from deskew import deskew_transform
 	ref = new_img  # new_img is the segmented reference
 	print(stats(ref))
-	p.solve_piece(ref) # TODO: replace with ref_img
+	#p.solve_piece(ref) # TODO: replace with ref_img
 
 def main_calibration():
 	parser = argparse.ArgumentParser(description='specify which file(s) to segment')
