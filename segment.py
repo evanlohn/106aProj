@@ -200,17 +200,29 @@ def transform_from_calibration(img, aspect_ratio=1.421):
 
 	return transform, dsk_mask
 
-# input is any image of scattered puzzle pieces on a table,
-# output is a list of binary masks the same size as the image, one for each puzzle piece
-def segment_pieces(img, transform=None):
+# input is an image of a single puzzle piece on the table and the deskewing transform
+def segment_pieces(img, background, transform=None):
 	from deskew import deskew_transform
+
 	#print(stats(img))
-	#plt.imshow(img)
-	#plt.show()
-	if transform is not None:
-		img = deskew_transform(img, transform)
-	#plt.imshow(img)
-	#plt.show()
+	img = cv.absdiff(img, background)
+	deskew_img = deskew_transform(img, transform)
+	adaptive_th = preproc(deskew_img)
+	th2 = cv.adaptiveThreshold(adaptive_th,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C,cv.THRESH_BINARY,101,10)
+
+	kernel = np.ones((5,5),np.uint8)
+	opening = cv.morphologyEx(th2, cv.MORPH_CLOSE, kernel)
+	contours, hierarchy = cv.findContours(opening, cv.RETR_TREE, cv.CHAIN_APPROX_NONE)
+	contours.sort(reverse=True, key=lambda x: cv.contourArea(x))
+	opening=cv.cvtColor(opening,cv.COLOR_GRAY2BGR)
+	cs = cv.drawContours(opening, [contours[2]], -1, (0,255,0), 3)
+	images = [img, deskew_img, th2, cs]
+	titles = ["Original", "Deskewed", "Adaptive Threshold", "contours"]
+	for i in range(4):
+	    plt.subplot(2,2,i+1),plt.imshow(images[i],'gray')
+	    plt.title(titles[i])
+	    plt.xticks([]),plt.yticks([])
+	plt.show()
 
 def stats(img):
 	return {'mean': np.mean(img),
@@ -235,14 +247,15 @@ def main_reference():
 
 def main_pieces():
 	parser = argparse.ArgumentParser(description='specify which file(s) to segment')
-	parser.add_argument('file', type=str, nargs='?', default='./individual_pieces/img0.png')
+	parser.add_argument('file', type=str, nargs='?', default='./individual_pieces/img2.png')
 	parser.add_argument('--ref', type=str, nargs='?', default='./raw_img_data/full_puzzle.png')
 	args = parser.parse_args()
 	ref_img = cv.imread(args.ref)
 	transform, dsk_mask = transform_from_calibration(ref_img)
 
 	p_img = cv.imread(args.file)
-	segment_pieces(p_img, transform=transform)
+	background = cv.imread('./individual_pieces/img1.png')
+	segment_pieces(p_img, background, transform=transform)
 
 if __name__ == '__main__':
 	main_pieces()
