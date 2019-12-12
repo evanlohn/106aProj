@@ -69,22 +69,7 @@ class Piece:
                 best_rot = rot
         self.final_pos = best_position
         self.rot_delta = best_rot
-
-    #Places the piece using Baxter/Sawyer
-    def place(self, pixel_origin, ppm):
-        # self.init_pos should have the initial pixel position
-        # self.final_pos should have the final pixel position
-        # self.rot_delta has the amount of rotation about the z axis necessary
         
-        #calculate current coordinates of the piece in the table frame
-        start_table_coords = pixel_to_table_frame(pixel_origin, self.init_pos, ppm)
-        end_table_coords = pixel_to_table_frame(pixel_origin, self.final_pos, ppm)
-
-        # move end effector to start_table_coords
-        # engage gripper; record current orientation
-        # move to end_table_coords with orientation prev_orientation + self.rot_delta
-        # release gripper
-        # move back to neutral (i.e. not in view of camera) position
 
 def argmax_convolve(rot_piece, ref_img, possible_locs):
 
@@ -100,13 +85,13 @@ def argmax_convolve(rot_piece, ref_img, possible_locs):
         confidence = -1
         for loc in possible_locs:
             section = conv_res[loc[0]:loc[0] + loc[2], loc[1]:loc[1]+loc[2]]
-            box_inds = np.unravel_index(np.argmax(section), conv_res.shape) 
+            box_inds = np.unravel_index(np.argmax(section), conv_res.shape)
             global_inds = np.array(box_inds) + np.array([loc[0], loc[1]])
             tmp_confidence = conv_res[global_inds[0]][global_inds[1]]
             if tmp_confidence > confidence:
                 confidence = tmp_confidence
                 inds = global_inds
-    
+
 
     images = [conv_res, ref_img, rot_piece]
     titles = ['convolution: max conf {}'.format(confidence), 'reference', 'piece']
@@ -121,12 +106,3 @@ def argmax_convolve(rot_piece, ref_img, possible_locs):
 
     return inds, confidence
     #return position, confidence
-
-# origin is the pixel coordinates (x, y) of the origin of the table frame (extracted by calibrate_ppm)
-# pixel_loc is the pixel coordinates of the pixel we want to determine
-# ppm is pixels per meter, found in calibrate_ppm
-def pixel_to_table_frame(origin, pixel_loc, ppm):
-    pixel_diff = np.array(pixel_loc) - np.array(origin)
-    # note that this ^^ implicitly assumes that the "vertical" of the image is the x axis of
-    # the table frame
-    return pixel_diff/ppm

@@ -1,46 +1,51 @@
+#!/usr/bin/env python
 import sys
 if sys.version[0] != '2':
 	print('please run all code with python2!')
 	exit(0)
 
 import numpy as np
+#import segment
 from piece import Piece
+from capture import single_capture
+
+#import rospy
+#import tf2_ros
+#from geometry_msgs.msg import Pose, PoseArray, Point, Quaternion
+#from tf.transformations import quaternion_from_euler
+
 
 def request_calibration():
-	print('entering calibration mode')
+	print('entering calibration mode\n')
+	print('Ensure tf_echo is running\n')
 
-	print('position the robot arm so it is not blocking the view of the table')
-	print('place the standard calibration paper on the table; press r and hit enter when this is done')
-	wait_for('r')
-	# TODO: code to record robot arm position and take a picture of the calibration paper on the table
-	calibration_pic = np.zeros((1080, 1920))
-	calibration_pic[400:600, 700:1300] = 128
-	calibration_pic[420:444, 720:737] = 200
-	rest_position = None
+	print('position the robot arm so it is not blocking the view of the table\n')
+	#standby currently hardcoded
 
-	print('move end effector to the origin; should be a corner of the paper used for calibration')
-	print('once the arm is there, type \'r\' to record the position.')
-	wait_for('r')
-	#TODO: code to record the end effector position
-	origin = np.array([0.3, -0.1, 0.2])
+	print('place the standard calibration paper square on the table, near the top left corner relative to the camera\n')
+	print('Once the window pops up, press c to capture.')
+	calibration_pic = single_capture()
 
-	print('now move the end effector to anywhere along the edge of the paper that faces away from the robot.')
-	print('again press r to record the position once the end effector is in place')
-	wait_for('r')
-	#TODO: code to record the end effector position
-	along_x_axis = np.array([0.2, 0.1, 0.21])
-	print('remove the calibration paper and robot arm from the view of the camera')
-	print('again press r once you have done so.')
-	wait_for('r')
+	print('move end effector to the origin; should be a corner of the paper used for calibration\n')
+	print('once the arm is there, record the position:')
 
-	#TODO: code to take a picture of the empty table
-	empty_table = np.zeros((1080, 1920))
-	empty_table[400:600, 700:1300] = 128
-	print('done! Calibration results will now be used to create the table frame.')
-	print('do not use the p command quite yet; wait for confirmation that the frame was created')
+	val = str(raw_input())
+	origin = np.array([float(value) for value in val.split(',')])
 
-	return calibration_pic, rest_positions, origin, along_x_axis, empty_table
+	print('\nnow move the end effector to anywhere along the edge of the paper that faces away from the robot.\n')
+	print('again record the position once the end effector is in place')
 
+	val = str(raw_input())
+	along_x_axis = np.array([float(value) for value in val.split(',')])
+
+	print('\nremove the calibration paper and robot arm from the view of the camera. Take a picture of the empty table\n')
+	print('Once the window pops up, press c to capture.')
+	empty_table = single_capture()
+
+	print('done! Calibration results will now be used to create the table frame.\n')
+	print('do not use the p command quite yet; wait for confirmation that the frame was created\n')
+
+	return calibration_pic, origin, along_x_axis, empty_table
 
 # good tutorial on adding frames in tf:
 # http://wiki.ros.org/tf/Tutorials/Adding%20a%20frame%20%28Python%29
@@ -55,29 +60,80 @@ def calibrate(origin, along_x_axis):
 	# is the arccos of the dot product. dot product of x_axis and 0 is the first element of x_axis.
 	theta = np.arccos(x_axis[0])
 
-	print'translation: {}    rotation: {}'.format(trans, theta)
-	"""
+	print "translation: {}    rotation: {}".format(trans, theta)
+
 	# this is supposed to broadcast the transform from base frame to a new "table" frame.
-	br = tf.TransformBroadcaster()
-    br.sendTransform(trans,
-                     tf.transformations.quaternion_from_euler(0, 0, theta),
-                     rospy.Time.now(),
-                     "table",
-                     "base")
-    print()
-    """
+	#br = tf.TransformBroadcaster()
+    #br.sendTransform(trans,
+#                     tf.transformations.quaternion_from_euler(0, 0, theta),
+#                     rospy.Time.now(),
+#                     "table",
+#                     "base")
 
+# origin is the pixel coordinates (x, y) of the origin of the table frame (extracted by calibrate_ppm)
+# pixel_loc is the pixel coordinates of the pixel we want to determine
+# ppm is pixels per meter, found in calibrate_ppm
+def pixel_to_table_frame(origin, pixel_loc, ppm):
+    pixel_diff = np.array(pixel_loc) - np.array(origin)
+    # note that this ^^ implicitly assumes that the "vertical" of the image is the x axis of
+    # the table frame
+    return pixel_diff/ppm
 
+#converts coords and theta to Pose
+def coords_to_pose(coords, theta):
+	pose = Pose()
+	pose.position.x = coords[0]
+	pose.position.y = coords[1]
+	pose.position.z = coords[2]
+	q = quaternion_from_euler(0, -1 * math.pi, theta)
+	pose.orientation.x = q[0]
+	pose.orientation.y = q[1]
+	pose.orientation.z = q[2]
+	pose.orientation.w = q[3]
+	return pose
+
+# Places a piece using Baxter
+def place(piece, pixel_origin, ppm):
+	# piece.init_pos should have the initial pixel position
+	# piece.final_pos should have the final pixel position
+	# piece.rot_delta has the amount of rotation about the z axis necessary
+
+	# calculate current coordinates of the piece in the table frame and convert to poses
+	start_coords = pixel_to_table_frame(pixel_origin, piece.init_pos, ppm)
+	end_coords = pixel_to_table_frame(pixel_origin, piece.final_pos, ppm)
+	start_pose = (start_coords, 0)
+	end_pose = (end_coords, piece.rot_delta)
+
+	pose_arr = PoseArray()
+	pose_arr.header.frame_id = "table"
+	pose_arr.poses = [start_pose, end_pose]
+
+	# Send message to path planner
+	return pick_and_place_client(poses)
+
+# Client for communicating with pick and place service
+# Send 2 poses for pick and place operation
+def pick_and_place_client(poses):
+	#wait for service to start
+	rospy.wait_for_service('pick_and_place')
+	try:
+		pick_and_place = rospy.ServiceProxy('pick_and_place', PlacePieceRequest)
+		response = pick_and_place(poses)
+		return response.success
+	except rospy.ServiceException, e:
+		print 'pick_and_place service failed'
 
 def wait_for(str):
 	count = 0
 	while True:
-		letter = input()
+		letter = raw_input()
 		if letter == str:
 			break
 		count += 1
 		if count % 69 == 0:
 			print('remember: you just need to type {} to move to the next step. smh Beccy'.format(str))
+
+request_calibration()
 
 def help():
 	print('commands are: (press enter after typing in the letter')
@@ -90,8 +146,10 @@ def main():
 	while True:
 		command = input()
 		if command == 'c':
-			cal_pic, rest_pos, o, a, empty_table = request_calibration()
+			cal_pic, o, a, empty_table = request_calibration()
+			pixel_origin, ppm, deskew_transform = segment.paper_calibration(cal_pic)
 			#TODO: store the above somewhere useful
+			#TODO: send rest position to pick_and_place service
 			calibrate(o, a)
 		elif command == 'p':
 			print('<<< beginning pick and place >>>')
@@ -102,14 +160,8 @@ def main():
 			print('picking best position and orientation for piece in final puzzle')
 			piece.solve_piece(ref_img)
 			print('found final piece location. Starting pick and place...')
-			piece.place()
-			# TODO: wait for message from baxter saying "done"
+			place(piece, pixel_origin, ppm)
 			print('piece has been placed. Place next piece and run ')
+			#TODO: Take picture of end result for next segmentation
 		else:
 			help()
-
-
-
-
-
-
