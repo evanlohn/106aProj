@@ -177,15 +177,17 @@ def main():
 			print('<<< beginning pick and place >>>')
 			print('segmenting piece... click the window and press c to start')
 			new_img = single_capture()
-			p_img, init_pos = segment_pieces(new_img, last_img,deskew_transform)
+			p_img, init_pos = segment_pieces(new_img, last_img, deskew_transform)
 			print('piece segmented from rest of image')
 			piece = Piece(p_img, init_pos)
 			print('picking best position and orientation for piece in final puzzle')
 			piece.solve_piece(ref_img)
 			print('found final piece location. Starting pick and place...')
 			place(piece, pixel_origin, ppm)
-			print('piece has been placed. Place next piece and run ')
-			#TODO: Take picture of end result for next segmentation
+			print('piece has been placed. Capture progress')
+			last_img = single_capture()
+			print('progress captured. Place next piece and run')
+
 		else:
 			help()
 
