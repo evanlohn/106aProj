@@ -160,7 +160,7 @@ def main():
 	last_img = None
 	ref_path = './raw_img_data/full_puzzle.png'
 	ref_raw = increase_contrast(imread(ref_path))
-	ref_img = segment_reference(ref_raw)
+	ref_img, _ = segment_reference(ref_raw)
 	while True:
 		command = str(raw_input())
 		if command == 'c':
@@ -183,9 +183,6 @@ def main():
 			print('picking best position and orientation for piece in final puzzle')
 			piece.solve_piece(ref_img)
 			print('found final piece location. Starting pick and place...')
-			piece = Piece(None, 0)
-			pixel_origin = None
-			ppm = 9001
 			place(piece, pixel_origin, ppm)
 			print('piece has been placed. Place next piece and run ')
 			#TODO: Take picture of end result for next segmentation
