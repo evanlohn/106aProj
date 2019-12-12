@@ -36,9 +36,11 @@ class Piece:
             for col in range(num_cols):
                 upper_left = np.array([row*big_box_height, col * big_box_width])
                 center = upper_left + center_offset
+                possible_locs.append(center)
                 #box_upper_left = center - box_size//2
                 #possible_locs.append((box_upper_left[0], box_upper_left[1], box_size))
 
+        possible_locs = np.array(possible_locs)
         print(possible_locs)
         return possible_locs
 
