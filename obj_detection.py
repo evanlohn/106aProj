@@ -1,6 +1,8 @@
 from __future__ import print_function
 import cv2 as cv
 import numpy as np
+import numpy.linalg as la
+import math
 import argparse
 
 parser = argparse.ArgumentParser(description='Code for Feature Matching with FLANN tutorial.')
@@ -50,7 +52,7 @@ H, _ =  cv.findHomography(obj, scene, cv.RANSAC)
 
 #-- Get the corners from the image_1 ( the object to be "detected" )
 obj_corners = np.empty((4,1,2), dtype=np.float32)
-obj_corners[0,0,0] = 0l
+obj_corners[0,0,0] = 0
 obj_corners[0,0,1] = 0
 obj_corners[1,0,0] = img_object.shape[1]
 obj_corners[1,0,1] = 0
@@ -58,8 +60,17 @@ obj_corners[2,0,0] = img_object.shape[1]
 obj_corners[2,0,1] = img_object.shape[0]
 obj_corners[3,0,0] = 0
 obj_corners[3,0,1] = img_object.shape[0]
-
+print(obj_corners.shape)
+print(H.shape)
 scene_corners = cv.perspectiveTransform(obj_corners, H)
+scene_centroid = np.int32(np.mean(scene_corners[:,0,:], axis=0))
+
+v1 = np.array([obj_corners[0, 0, 0], obj_corners[0, 0, 1]]) - np.array([obj_corners[1, 0, 0], obj_corners[1, 0, 1]])
+v2 = np.array([scene_corners[0, 0, 0], scene_corners[0, 0, 1]]) - np.array([scene_corners[1, 0, 0], scene_corners[1, 0, 1]])
+cosang = np.dot(v1, v2)
+sinang = la.norm(np.cross(v1, v2))
+
+print(np.arctan2(sinang, cosang))
 
 #-- Draw lines between the corners (the mapped object in the scene - image_2 )
 cv.line(img_matches, (int(scene_corners[0,0,0] + img_object.shape[1]), int(scene_corners[0,0,1])),\
@@ -72,6 +83,7 @@ cv.line(img_matches, (int(scene_corners[3,0,0] + img_object.shape[1]), int(scene
     (int(scene_corners[0,0,0] + img_object.shape[1]), int(scene_corners[0,0,1])), (0,255,0), 4)
 
 #-- Show detected matches
+cv.imwrite('matches.png', img_matches)
 cv.imshow('Good Matches & Object detection', img_matches)
 
 cv.waitKey()

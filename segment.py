@@ -384,7 +384,7 @@ def main_reference():
 
 def main_pieces():
 	parser = argparse.ArgumentParser(description='specify which file(s) to segment')
-	parser.add_argument('file', type=str, nargs='?', default='./individual_pieces/img2.png')
+	parser.add_argument('file', type=str, nargs='?', default='./individual_pieces/img8.png')
 	parser.add_argument('--ref', type=str, nargs='?', default='./raw_img_data/full_puzzle.png')
 	args = parser.parse_args()
 	ref_img = imread(args.ref)
@@ -398,7 +398,7 @@ def main_pieces():
 def main_test():
 	from piece import Piece
 	parser = argparse.ArgumentParser(description='specify which file(s) to used for testing')
-	parser.add_argument('file', type=str, nargs='?', default='./individual_pieces/img9.png')
+	parser.add_argument('file', type=str, nargs='?', default='./individual_pieces/img4.png')
 	parser.add_argument('--prev_state', type=str, nargs='?', default='./raw_img_data/empty_table.png')
 
 	#parser.add_argument('--cut_img', type=str, nargs='?', default='./individual_pieces/extra_cropped_img00.png')
@@ -418,12 +418,11 @@ def main_test():
 	#imshow(prev_state)
 	#imshow(curr_state)
 	new_img, ref_transform = segment_reference(ref_img)
-	#cv.imwrite("tmp_images/go.png", new_img)
+	cv.imwrite("tmp_images/go.png", new_img)
 	dsk_cut_img, init_pos = segment_pieces(curr_state, prev_state, transform)
 
 	#print(stats(cut_img))
-	#cv.imwrite("tmp_images/bears.png", dsk_cut_img)
-	exit(0)
+	cv.imwrite("tmp_images/bears.png", dsk_cut_img)
 
 	#other = imread('./individual_pieces/cropped_img0.png')
 
