@@ -36,8 +36,8 @@ class Piece:
             for col in range(num_cols):
                 upper_left = np.array([row*big_box_height, col * big_box_width])
                 center = upper_left + center_offset
-                box_upper_left = center - box_size//2
-                possible_locs.append((box_upper_left[0], box_upper_left[1], box_size))
+                #box_upper_left = center - box_size//2
+                #possible_locs.append((box_upper_left[0], box_upper_left[1], box_size))
 
         print(possible_locs)
         return possible_locs
@@ -55,28 +55,9 @@ class Piece:
         self.final_pos = best_position
         self.rot_delta = best_rot
 
-    #Places the piece using Baxter/Sawyer
-    def place(self, pixel_origin, ppm):
-        # self.init_pos should have the initial pixel position
-        # self.final_pos should have the final pixel position
-        # self.rot_delta has the amount of rotation about the z axis necessary
-        
-        #calculate current coordinates of the piece in the table frame
-        start_table_coords = pixel_to_table_frame(pixel_origin, self.init_pos, ppm)
-        end_table_coords = pixel_to_table_frame(pixel_origin, self.final_pos, ppm)
-
-        # move end effector to start_table_coords
-        # engage gripper; record current orientation
-        # move to end_table_coords with orientation prev_orientation + self.rot_delta
-        # release gripper
-        # move back to neutral (i.e. not in view of camera) position
-
 def SURF_detect(piece, ref_img, possible_locs):
     img_object = preproc(piece)
     img_scene = preproc(ref_img)
-    if img_object is None or img_scene is None:
-        print('Could not open or find the images!')
-        exit(0)
 
     #-- Step 1: Detect the keypoints using SURF Detector, compute the descriptors
     minHessian = 400
@@ -138,6 +119,7 @@ def SURF_detect(piece, ref_img, possible_locs):
         (int(scene_corners[3,0,0] + img_object.shape[1]), int(scene_corners[3,0,1])), (0,255,0), 4)
     cv.line(img_matches, (int(scene_corners[3,0,0] + img_object.shape[1]), int(scene_corners[3,0,1])),\
         (int(scene_corners[0,0,0] + img_object.shape[1]), int(scene_corners[0,0,1])), (0,255,0), 4)
+
 
 # origin is the pixel coordinates (x, y) of the origin of the table frame (extracted by calibrate_ppm)
 # pixel_loc is the pixel coordinates of the pixel we want to determine
