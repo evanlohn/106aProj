@@ -102,8 +102,8 @@ def SURF_detect(piece, ref_img, possible_locs):
         scene[i,1] = keypoints_scene[good_matches[i].trainIdx].pt[1]
 
     H, _ =  cv.findHomography(obj, scene, cv.RANSAC)
-    print('H')
-    print(H)
+    #print('H')
+    #print(H)
 
     #-- Get the corners from the image_1 ( the object to be "detected" )
     obj_corners = np.empty((4,1,2), dtype=np.float32)
@@ -118,7 +118,7 @@ def SURF_detect(piece, ref_img, possible_locs):
 
 
     obj_centroid = np.int32(np.mean(obj_corners[:,0,:], axis=0))
-    print(stats(obj_corners))
+    #print(stats(obj_corners))
 
 
     scene_corners = cv.perspectiveTransform(obj_corners, H)
@@ -144,7 +144,7 @@ def SURF_detect(piece, ref_img, possible_locs):
     closest = np.argmax(closeness)
     closest_possible_loc = possible_locs[closest]
 
-    print(scene_rotation)
+    #print(scene_rotation)
     return closest_possible_loc, scene_rotation
 
 

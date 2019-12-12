@@ -184,7 +184,7 @@ def segment_reference(ref_img):
 
 	gray = preproc(ref_img)
 	adap_mean = reference_mask(gray, debug=False)
-	print(stats(np.uint8(adap_mean)))
+	#print(stats(np.uint8(adap_mean)))
 	#imshow(np.uint8(adap_mean)*255, title='contour', just_write=True)
 
 	#images = [adap_mean, adap_gauss, gray, gray * adap_mean, gray * adap_gauss]
@@ -201,19 +201,6 @@ def segment_reference(ref_img):
 	corners = np.int32([list(corn)[::-1] for corn in corners])
 	fill_between_corners(adap_mean, corners)
 	corners = np.float32(corners)
-	#corner_mat = np.zeros_like(adap_mean)
-	#for coords in corners:
-		#print(np.int32(coords))
-		#print(corner_mat.shape)
-	#	corner_mat[tuple(np.int32(coords))] = 1
-	#corner_mat = np.uint8(cv.dilate(corner_mat, np.ones((10,10)))) # just for visual effect
-	#corners_found = np.copy(gray)
-	#print(corner_mat.max())
-	#print(stats(corners_found))
-	#corners_found[corner_mat == 1] = 0
-	#print(stats(corners_found))
-
-
 	
 	from deskew import calculate_deskew, deskew_transform
 	transform = calculate_deskew(corners) # NOTE: uses default aspect ratio (which corresponds to the Toy Story puzzle)
@@ -234,6 +221,7 @@ def segment_reference(ref_img):
 	#imshow(new_img, title='deskewed', just_write=True)
 	#plt.imshow(new_img, 'gray')
 	#plt.show()
+	imshow(new_img, title='reference', just_write=True)
 	return new_img, transform
 
 
@@ -269,13 +257,14 @@ def transform_from_paper(img, aspect_ratio=a1):
 	#imshow(img)
 	adap_mean = reference_mask(gray, blur=5, debug=False, thresh_type='manual', manual_thresh=200) # TODO: might need to change this a bit to segment the paper
 
-	#imshow(adap_mean)
+	imshow(adap_mean, title='calibration_seg', just_write=True)
 
 	corners = find_corners(adap_mean)
 	corners = np.float32([list(corn)[::-1] for corn in corners])
 	from deskew import calculate_deskew, deskew_transform
 	transform = calculate_deskew(corners, ratio=aspect_ratio)
 	tmp = deskew_transform(gray, transform)
+	imshow(tmp, title='calibration_seg', just_write=True)
 	dsk_mask = deskew_transform(adap_mean, transform)
 
 	#imshow(dsk_mask)
@@ -300,7 +289,7 @@ def segment_pieces(img, background, transform=None):
 	#20
 	_, th2 = cv.threshold(adaptive_th, 23,1,cv.THRESH_BINARY)
 	#print(stats(th2))
-	#imshow(th2)
+	imshow(th2, title='piece_seg_adaptive', just_write=True)
 
 	#imshow(np.uint8(th2)*255, title='adap', just_write=True)
 	sz = 5
@@ -323,7 +312,7 @@ def segment_pieces(img, background, transform=None):
 	opening = cv.dilate(opening, kernel)
 	opening = fill_holes(opening)
 	opening = cv.erode(opening, kernel)
-	#imshow(opening)
+	imshow(opening, title='piece_seg_postmorph', just_write=True)
 
 	#contours, hierarchy = cv.findContours(np.uint8(opening), cv.RETR_TREE, cv.CHAIN_APPROX_NONE)
 	#contours.sort(reverse=True, key=lambda x: cv.contourArea(x))
@@ -347,6 +336,7 @@ def segment_pieces(img, background, transform=None):
 	#imshow(masked_img)
 
 	final_cut = masked_img[y:y+h, x:x+w, :]
+	imshow(final_cut, title='piece_seg_final', just_write=True)
 	#final_cut = increase_contrast(final_cut)
 	#imshow(final_cut, title='final_cut', just_write=True)
 	return final_cut, np.array([y + h//2, x + w//2])
@@ -378,7 +368,7 @@ def main_reference():
 	#imshow(ref_img, title='ref', just_write=True)
 	#plt.show()
 	new_img, transform = segment_reference(ref_img)
-	print(stats(new_img))
+	#print(stats(new_img))
 
 	imshow(new_img)
 
@@ -456,7 +446,7 @@ def main_test():
 	p = Piece(dsk_cut_img, init_pos)
 
 	ref = new_img  # new_img is the segmented reference
-	print('ref stats: {}'.format(stats(ref)))
+	#print('ref stats: {}'.format(stats(ref)))
 	p.solve_piece(ref) # TODO: replace with ref_img
 
 def main_calibration():
