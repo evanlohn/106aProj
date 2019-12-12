@@ -288,8 +288,8 @@ def segment_pieces(img, background, transform=None):
 	#      that satisfies some reasonable conditions like a single piece gets extracted and it's not at the top/bottom of the image
 	#20
 	_, th2 = cv.threshold(adaptive_th, 23,1,cv.THRESH_BINARY)
-	#print(stats(th2))
-	imshow(th2, title='piece_seg_adaptive', just_write=True)
+	print(stats(th2))
+	imshow(255*np.int32(th2), title='piece_seg_adaptive', just_write=True)
 
 	#imshow(np.uint8(th2)*255, title='adap', just_write=True)
 	sz = 5
