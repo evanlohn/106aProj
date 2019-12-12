@@ -61,7 +61,7 @@ def imshow_mult(images, titles, inds=[0,0]):
 	    plt.subplot(2,len(images)//2 + 1,i+1),plt.imshow(images[i],'gray')
 	    if i < 2:
 	    	plt.subplot(2,len(images)//2 + 1,i+1),plt.plot(inds[1], inds[0], 'r+')
-	    	plt.title(titles[i])
+	    plt.title(titles[i])
 	if cant_plot:
 		plt.savefig(fnamer())
 		plt.close()

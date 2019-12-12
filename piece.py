@@ -49,7 +49,7 @@ class Piece:
         # the puzzle.
         piece = self.img
         n = 64
-        box_size = 15
+        box_size = 51
         max_ang = 360 # imutils uses degrees
         rotation_angles = [float(max_ang * i) / n for i in range(n)]
 
@@ -100,9 +100,14 @@ def argmax_convolve(rot_piece_color, ref_img_color, possible_locs):
     def confidence_aggregator(confidences):
         return np.amax(np.stack(confidences, axis=2), axis=2)
         #return sum(confidences)/3
+        #return sum([conf * conf for conf in confidences])/10
+        #return np.amin(np.stack(confidences, axis=2), axis=2)
 
     channels = ['r','g','b']
     all_confidences = []
+
+
+
 
     all_conv_res = []
     for dim_ind in range(ref_img_color.shape[2]):
@@ -112,6 +117,7 @@ def argmax_convolve(rot_piece_color, ref_img_color, possible_locs):
     #print('finished convolve')
     conv_res = confidence_aggregator(all_conv_res)
     assert conv_res.shape == ref_img.shape, str('shapes differ: conv is {}, ref is {}'.format(conv_res.shape, ref_img.shape))
+    poss_locs_mask = np.zeros_like(conv_res)
 
     if possible_locs is None:
         inds = np.unravel_index(np.argmax(conv_res), conv_res.shape)
@@ -120,6 +126,8 @@ def argmax_convolve(rot_piece_color, ref_img_color, possible_locs):
         inds = (-1, -1)
         confidence = -1
         for loc in possible_locs:
+            poss_locs_mask[loc[0]:loc[0] + loc[2], loc[1]:loc[1]+loc[2]] = 1
+
             for row_ind in range(loc[0], loc[0]+loc[2]):
                 for col_ind in range(loc[1], loc[1] + loc[2]):
                     #print(row_ind, col_ind)
@@ -136,10 +144,17 @@ def argmax_convolve(rot_piece_color, ref_img_color, possible_locs):
             #if tmp_confidence > confidence:
             #    confidence = tmp_confidence
             #    inds = global_inds
-    if confidence > 205:
-        images = [conv_res, ref_img, rot_piece]
-        titles = ['convolution: max conf {}'.format(confidence), 'reference', 'piece']
-        imshow_mult(images, titles, inds)
+    conv_res_masked = conv_res * poss_locs_mask
+    ref_img_masked = ref_img * poss_locs_mask
+    new_conv_res = []
+    for dim_ind in range(ref_img_color.shape[2]):
+        ref_img = ref_img_color[:,:,dim_ind] * poss_locs_mask
+        rot_piece = rot_piece_color[:,:,dim_ind]
+        new_conv_res.append(cv.filter2D(ref_img, -1, rot_piece))
+    meh = confidence_aggregator(new_conv_res)
+    images = [conv_res, conv_res_masked, ref_img_color, ref_img_masked, rot_piece, meh]
+    titles = ['convolution: max conf {}'.format(confidence), 'masked convolution', 'reference', 'masked reference', 'piece', 'meh']
+    imshow_mult(images, titles, inds)
 
 
     #images = [conv_res, ref_img, rot_piece]
