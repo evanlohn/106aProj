@@ -123,3 +123,86 @@ old segment_reference from segment.py
 			plt.show()
 
 """
+
+
+"""
+def argmax_convolve(rot_piece_color2, ref_img_color, possible_locs, i):
+
+    #print('starting argmax convolve')
+
+    # confidences should be a sequence of array-like things that can be broadcasted.
+    # this function does some kind of element-wise aggregation to get a matrix of the
+    # broadcast shape, or otherwise a scalar if a list of scalars was passed in.
+    # examples are: sum, element-wise max, sum of squares, etc
+    def confidence_aggregator(confidences):
+        return np.amax(np.stack(confidences, axis=2), axis=2)
+        #return sum(confidences)/3
+        #return sum([conf * conf for conf in confidences])/10
+        #return np.amin(np.stack(confidences, axis=2), axis=2)
+
+    channels = ['r','g','b']
+    all_confidences = []
+
+
+    rot_piece_color = np.float32(rot_piece_color2)/(1 + np.sum(rot_piece_color2, axis=(0,1), keepdims=True))
+
+    all_conv_res = []
+    for dim_ind in range(ref_img_color.shape[2]):
+        ref_img = ref_img_color[:,:,dim_ind]
+        rot_piece = rot_piece_color[:,:,dim_ind]
+        all_conv_res.append(cv.filter2D(ref_img, -1, rot_piece))
+    #print('finished convolve')
+    conv_res = confidence_aggregator(all_conv_res)
+    assert conv_res.shape == ref_img.shape, str('shapes differ: conv is {}, ref is {}'.format(conv_res.shape, ref_img.shape))
+    poss_locs_mask = np.zeros_like(conv_res)
+
+    if possible_locs is None:
+        inds = np.unravel_index(np.argmax(conv_res), conv_res.shape)
+        confidence = conv_res[inds[0]][inds[1]]
+    else:
+        inds = (-1, -1)
+        confidence = -1
+        for loc in possible_locs:
+            poss_locs_mask[loc[0]:loc[0] + loc[2], loc[1]:loc[1]+loc[2]] = 1
+
+            for row_ind in range(loc[0], loc[0]+loc[2]):
+                for col_ind in range(loc[1], loc[1] + loc[2]):
+                    #print(row_ind, col_ind)
+                    tmp_conf = conv_res[row_ind][col_ind]
+                    if tmp_conf > confidence:
+                        confidence = tmp_conf
+                        inds = (row_ind, col_ind)
+
+            #print(loc)
+            #section = conv_res[loc[0]:loc[0] + loc[2], loc[1]:loc[1]+loc[2]]
+            #box_inds = np.unravel_index(np.argmax(section), section.shape) 
+            #global_inds = np.array(box_inds) + np.array([loc[0], loc[1]])
+            #tmp_confidence = conv_res[global_inds[0]][global_inds[1]]
+            #if tmp_confidence > confidence:
+            #    confidence = tmp_confidence
+            #    inds = global_inds
+    conv_res_masked = conv_res * poss_locs_mask
+    ref_img_masked = ref_img * poss_locs_mask
+
+    if i == 45:
+        images = [conv_res, ref_img_color,rot_piece_color2]
+        titles = ['convolution: max conf {} {}'.format(confidence, i), 'reference', 'piece']
+        for i in range(len(images)):
+            imshow(images[i],title=titles[i], inds=None if i==2 else inds)
+
+
+    #images = [conv_res, ref_img, rot_piece]
+    #titles = ['convolution: max conf {}'.format(confidence), 'reference', 'piece']
+    #for i in range(len(images)):
+    #    plt.subplot(2,len(images)//2 + 1,i+1),plt.imshow(images[i],'gray')
+    #    if i < 2:
+    #        plt.subplot(2,len(images)//2 + 1,i+1),plt.plot(inds[1], inds[0], 'r+')
+    #    plt.title(titles[i])
+    #    #plt.xticks([]),plt.yticks([])
+
+    #plt.show()
+
+    return inds, confidence
+    #return position, confidence
+
+"""

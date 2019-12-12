@@ -13,19 +13,6 @@ import argparse
 import math
 from contrast import increase_contrast
 
-if cant_plot:
-	import os
-	import matplotlib
-	matplotlib.use("Agg")
-	loc = './tmp_images'
-	fnamer = mkFileNamer(loc, 'tmp')
-	files = [os.path.join(loc, file) for file in os.listdir(loc) if file[-4:] == '.png']
-	for file in files:
-		if (os.path.exists(file)):
-			os.remove(file)
-
-from matplotlib import pyplot as plt
-
 
 
 expected_dims = (2560, 1440)
@@ -45,15 +32,22 @@ def imread(img_path, typ=None, should_resize=True):
 		resized = standard_resize(resized)
 	return resized
 
-def imshow(img, title='', cmap='gray'):
-	plt.imshow(img, cmap)
-	if title:
-		plt.title(title)
-
-	if cant_plot:
-		plt.savefig(fnamer())
+def imshow(img, title='', cmap='gray', inds=None, just_write=False):
+	if just_write:
+		ret = cv.imwrite('./tmp_images/tmp_{}.png'.format(title), img)
+		assert ret
+		return
 	else:
-		plt.show()
+		plt.imshow(img, cmap)
+		if title:
+			plt.title(title)
+		if inds:
+			plt.plot(inds[1], inds[0], 'r+')
+
+		if cant_plot:
+			plt.savefig(fnamer())
+		else:
+			plt.show()
 
 def imshow_mult(images, titles, inds=[0,0]):
 	plt.figure()
@@ -61,7 +55,7 @@ def imshow_mult(images, titles, inds=[0,0]):
 	    plt.subplot(2,len(images)//2 + 1,i+1),plt.imshow(images[i],'gray')
 	    if i < 2:
 	    	plt.subplot(2,len(images)//2 + 1,i+1),plt.plot(inds[1], inds[0], 'r+')
-	    	plt.title(titles[i])
+	    plt.title(titles[i])
 	if cant_plot:
 		plt.savefig(fnamer())
 		plt.close()
@@ -126,9 +120,12 @@ def calc_reference_mask(img, adap_type='mean', blockSize=11, C=2, invert=False, 
 	if debug:
 		imshow(first_thresh, 'gray')
 
+	#imshow(first_thresh, title='adaptive_threshold', just_write=True)
 
 	# the puzzle blob isn't homogenous, so some pieces will have some black in them. So, we fill those holes with white.
 	first_thresh = fill_holes(first_thresh)
+
+	#imshow(first_thresh, title='morphological', just_write=True)
 
 	# see https://stackoverflow.com/questions/35854197/how-to-use-opencvs-connected-components-with-stats-in-python
 	# num_labels is how many connected components there are
@@ -187,7 +184,8 @@ def segment_reference(ref_img):
 
 	gray = preproc(ref_img)
 	adap_mean = reference_mask(gray, debug=False)
-	#imshow(adap_mean)
+	print(stats(np.uint8(adap_mean)))
+	#imshow(np.uint8(adap_mean)*255, title='contour', just_write=True)
 
 	#images = [adap_mean, adap_gauss, gray, gray * adap_mean, gray * adap_gauss]
 	#titles = ['adap mean', 'adap gauss', 'orig', 'adap mean seg', 'adap gauss seg']
@@ -233,6 +231,7 @@ def segment_reference(ref_img):
 	#plt.show()
 	ul, ur, lr, ll = find_corners(mask)
 	new_img = dst[ul[0]:lr[0], ul[1]:lr[1], :]
+	#imshow(new_img, title='deskewed', just_write=True)
 	#plt.imshow(new_img, 'gray')
 	#plt.show()
 	return new_img, transform
@@ -288,11 +287,13 @@ def segment_pieces(img, background, transform=None):
 	from deskew import deskew_transform
 
 	#print(stats(img))
+	#imshow(img, title='curr', just_write=True)
+	#imshow(background, title='background', just_write=True)
 	img = cv.absdiff(img, background)
 	img = increase_contrast(img)  #TODO: keep? delete?
 	#imshow(img)
-
 	adaptive_th = preproc(img)
+	#imshow(adaptive_th, title='diff', just_write=True)
 	#th2 = cv.adaptiveThreshold(adaptive_th,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C,cv.THRESH_BINARY_INV,101,10)
 	#TODO: put the rest of this block of code in a for loop over different absolute thresholds, picking the first one
 	#      that satisfies some reasonable conditions like a single piece gets extracted and it's not at the top/bottom of the image
@@ -301,7 +302,7 @@ def segment_pieces(img, background, transform=None):
 	#print(stats(th2))
 	#imshow(th2)
 
-
+	#imshow(np.uint8(th2)*255, title='adap', just_write=True)
 	sz = 5
 	#k1 = np.ones((sz,sz), np.uint8)
 	#th2 = cv.dilate(th2, k1)
@@ -346,7 +347,7 @@ def segment_pieces(img, background, transform=None):
 	#imshow(masked_img)
 
 	final_cut = masked_img[y:y+h, x:x+w, :]
-	#imshow(final_cut)
+	#imshow(final_cut, title='final_cut', just_write=True)
 	return final_cut, [y + h//2, x + w//2]
 	#opening=cv.cvtColor(opening,cv.COLOR_GRAY2BGR)
 	#cs = cv.drawContours(opening, [contours[2]], -1, (0,255,0), 3)
@@ -372,8 +373,8 @@ def main_reference():
 	parser = argparse.ArgumentParser(description='specify which file(s) to segment')
 	parser.add_argument('file', type=str, nargs='?', default='./raw_img_data/full_puzzle.png')
 	args = parser.parse_args()
-	ref_img = imread(args.file)
-	#plt.imshow(ref_img)
+	ref_img = increase_contrast(imread(args.file))
+	#imshow(ref_img, title='ref', just_write=True)
 	#plt.show()
 	new_img, transform = segment_reference(ref_img)
 	print(stats(new_img))
@@ -396,7 +397,7 @@ def main_pieces():
 def main_test():
 	from piece import Piece
 	parser = argparse.ArgumentParser(description='specify which file(s) to used for testing')
-	parser.add_argument('file', type=str, nargs='?', default='./individual_pieces/img3.png')
+	parser.add_argument('file', type=str, nargs='?', default='./individual_pieces/img9.png')
 	parser.add_argument('--prev_state', type=str, nargs='?', default='./raw_img_data/empty_table.png')
 
 	#parser.add_argument('--cut_img', type=str, nargs='?', default='./individual_pieces/extra_cropped_img00.png')
@@ -416,13 +417,12 @@ def main_test():
 	#imshow(prev_state)
 	#imshow(curr_state)
 	new_img, ref_transform = segment_reference(ref_img)
-	cv.imwrite("tmp_images/go.png", new_img)
+	#cv.imwrite("tmp_images/go.png", new_img)
 	dsk_cut_img, init_pos = segment_pieces(curr_state, prev_state, transform)
 
 	#print(stats(cut_img))
-	cv.imwrite("tmp_images/bears.png", dsk_cut_img)
+	#cv.imwrite("tmp_images/bears.png", dsk_cut_img)
 	exit(0)
-	#exit(0)
 
 	#other = imread('./individual_pieces/cropped_img0.png')
 
@@ -443,15 +443,15 @@ def main_test():
 	#print(stats(dsk_cut_img[:,:,2]))
 	dsk_cut_img = increase_contrast(dsk_cut_img)
 
-	dsk_cut_img = np.float32(dsk_cut_img)/(1 + np.sum(dsk_cut_img, axis=(0,1), keepdims=True))
+	dsk_cut_img = dsk_cut_img
 
 	print(stats(dsk_cut_img[:,:,0]))
 	print(stats(dsk_cut_img[:,:,1]))
 	print(stats(dsk_cut_img[:,:,2]))
 
-	imshow(dsk_cut_img[:,:,0])
-	imshow(dsk_cut_img[:,:,1])
-	imshow(dsk_cut_img[:,:,2])
+	#imshow(dsk_cut_img[:,:,0])
+	#imshow(dsk_cut_img[:,:,1])
+	#imshow(dsk_cut_img[:,:,2])
 
 	p = Piece(dsk_cut_img, np.array(init_pos))
 
@@ -466,4 +466,16 @@ def main_calibration():
 	paper_img = imread(args.file)
 
 if __name__ == '__main__':
+	if cant_plot:
+		import os
+		import matplotlib
+		matplotlib.use("Agg")
+		loc = './tmp_images'
+		print('yeeting')
+		fnamer = mkFileNamer(loc, 'tmp')
+		files = [os.path.join(loc, file) for file in os.listdir(loc) if file[-4:] == '.png']
+		for file in files:
+			if (os.path.exists(file)):
+				os.remove(file)
+	from matplotlib import pyplot as plt
 	main_test()
