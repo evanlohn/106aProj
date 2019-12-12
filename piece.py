@@ -9,6 +9,8 @@ from matplotlib import pyplot as plt
 import numpy as np
 from contrast import increase_contrast
 
+from segment import imshow, imshow_mult
+
 class Piece:
 
     puzzle_dims = [4,6] # a 4 by 6 = 24 piece puzzle being solved
@@ -37,6 +39,7 @@ class Piece:
                 box_upper_left = center - box_size//2
                 possible_locs.append((box_upper_left[0], box_upper_left[1], box_size))
 
+        print(possible_locs)
         return possible_locs
 
     #Solves and sets the final pixel position and rotation delta
@@ -45,10 +48,10 @@ class Piece:
         # assume we have an instance variable named self.cut_img that has a small image of just
         # the puzzle.
         piece = self.img
-        n = 12
+        n = 36
         box_size = 11
         max_ang = 360 # imutils uses degrees
-        rotation_angles = [max_ang * i / n for i in range(n)]
+        rotation_angles = [float(max_ang * i) / n for i in range(n)]
 
         possible_locs = self.calc_possible_locs(ref_img.shape, box_size=box_size)
 
@@ -88,8 +91,9 @@ class Piece:
 
 def argmax_convolve(rot_piece, ref_img, possible_locs):
 
-
+    #print('starting argmax convolve')
     conv_res = cv.filter2D(ref_img, -1, rot_piece)
+    #print('finished convolve')
     assert conv_res.shape == ref_img.shape, str('shapes differ: conv is {}, ref is {}'.format(conv_res.shape, ref.shape))
 
     if possible_locs is None:
@@ -99,25 +103,38 @@ def argmax_convolve(rot_piece, ref_img, possible_locs):
         inds = (-1, -1)
         confidence = -1
         for loc in possible_locs:
-            section = conv_res[loc[0]:loc[0] + loc[2], loc[1]:loc[1]+loc[2]]
-            box_inds = np.unravel_index(np.argmax(section), conv_res.shape) 
-            global_inds = np.array(box_inds) + np.array([loc[0], loc[1]])
-            tmp_confidence = conv_res[global_inds[0]][global_inds[1]]
-            if tmp_confidence > confidence:
-                confidence = tmp_confidence
-                inds = global_inds
+            for row_ind in range(loc[0], loc[0]+loc[2]):
+                for col_ind in range(loc[1], loc[1] + loc[2]):
+                    tmp_conf = conv_res[row_ind][col_ind]
+                    if tmp_conf > confidence:
+                        confidence = tmp_conf
+                        inds = (loc[0] + row_ind, loc[1] + col_ind)
+
+            #print(loc)
+            #section = conv_res[loc[0]:loc[0] + loc[2], loc[1]:loc[1]+loc[2]]
+            #box_inds = np.unravel_index(np.argmax(section), section.shape) 
+            #global_inds = np.array(box_inds) + np.array([loc[0], loc[1]])
+            #tmp_confidence = conv_res[global_inds[0]][global_inds[1]]
+            #if tmp_confidence > confidence:
+            #    confidence = tmp_confidence
+            #    inds = global_inds
+        if confidence >= 195:
+            images = [conv_res, ref_img, rot_piece]
+            titles = ['convolution: max conf {}'.format(confidence), 'reference', 'piece']
+            imshow_mult(images, titles, inds)
+
     
 
-    images = [conv_res, ref_img, rot_piece]
-    titles = ['convolution: max conf {}'.format(confidence), 'reference', 'piece']
-    for i in range(len(images)):
-        plt.subplot(2,len(images)//2 + 1,i+1),plt.imshow(images[i],'gray')
-        if i < 2:
-            plt.subplot(2,len(images)//2 + 1,i+1),plt.plot(inds[1], inds[0], 'r+')
-        plt.title(titles[i])
-        #plt.xticks([]),plt.yticks([])
+    #images = [conv_res, ref_img, rot_piece]
+    #titles = ['convolution: max conf {}'.format(confidence), 'reference', 'piece']
+    #for i in range(len(images)):
+    #    plt.subplot(2,len(images)//2 + 1,i+1),plt.imshow(images[i],'gray')
+    #    if i < 2:
+    #        plt.subplot(2,len(images)//2 + 1,i+1),plt.plot(inds[1], inds[0], 'r+')
+    #    plt.title(titles[i])
+    #    #plt.xticks([]),plt.yticks([])
 
-    plt.show()
+    #plt.show()
 
     return inds, confidence
     #return position, confidence
@@ -129,4 +146,4 @@ def pixel_to_table_frame(origin, pixel_loc, ppm):
     pixel_diff = np.array(pixel_loc) - np.array(origin)
     # note that this ^^ implicitly assumes that the "vertical" of the image is the x axis of
     # the table frame
-    return pixel_diff/ppm
+    return float(pixel_diff)/ppm
