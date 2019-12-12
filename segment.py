@@ -273,7 +273,7 @@ def transform_from_paper(img, aspect_ratio=a1):
 	imshow(tmp, title='calibration_seg', just_write=True)
 	dsk_mask = deskew_transform(adap_mean, transform)
 
-	#imshow(dsk_mask)
+	imshow(255*dsk_mask, title='Calibration_mask_seg', just_write=True)
 
 	return transform, dsk_mask
 
