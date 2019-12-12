@@ -104,7 +104,7 @@ def coords_to_pose(coords, theta):
 	pose = Pose()
 	pose.position.x = coords[0]
 	pose.position.y = coords[1]
-	pose.position.z = coords[2]
+	pose.position.z = 0
 	q = quaternion_from_euler(0, -1 * math.pi, theta)
 	pose.orientation.x = q[0]
 	pose.orientation.y = q[1]
@@ -121,6 +121,8 @@ def place(piece, pixel_origin, ppm):
 	# calculate current coordinates of the piece in the table frame and convert to poses
 	start_coords = pixel_to_table_frame(pixel_origin, piece.init_pos, ppm)#[.607, -.454, -.226]#
 	end_coords = pixel_to_table_frame(pixel_origin, piece.final_pos, ppm)#[.546, .045, -.226]#
+	print(start_coords)
+	print(end_coords)
 	start_pose = coords_to_pose(start_coords, 0)
 	end_pose = coords_to_pose(end_coords, piece.rot_delta)#math.pi)
 
@@ -205,5 +207,5 @@ def main(debug=False):
 
 
 if __name__ == '__main__':
-    main(debug=True)
+    main()#debug=True)
     print 'done'
