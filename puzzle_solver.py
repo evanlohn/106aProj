@@ -47,7 +47,7 @@ def request_calibration():
 def calibrate(origin, along_x_axis):
 	#goal is the translation and the rotation about the z axis
 	# translation is already given by "origin", modulo a small correction factor to z
-	trans = tuple(origin + np.array([0,0,-0.025]))
+	trans = tuple(origin)
 	x_axis = along_x_axis - origin
 	x_axis = x_axis/np.linalg.norm(x_axis)
 	assert np.allclose(np.dot(x_axis, x_axis), 1)
