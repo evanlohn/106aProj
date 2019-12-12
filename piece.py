@@ -10,7 +10,7 @@ import numpy as np
 import numpy.linalg as la
 from contrast import increase_contrast
 
-from segment import imshow, imshow_mult, preproc
+from segment import imshow, imshow_mult, preproc, stats
 
 class Piece:
 
@@ -58,11 +58,16 @@ class Piece:
         self.rot_delta = rotation
 
 def SURF_detect(piece, ref_img, possible_locs):
-    img_object = piece
-    img_scene = ref_img
 
-    img_object = cv.imread("tmp_images/bears.png", cv.IMREAD_GRAYSCALE)
-    img_scene = cv.imread("tmp_images/go.png", cv.IMREAD_GRAYSCALE)
+    img_object = preproc(piece)
+    img_scene = preproc(ref_img)
+    #print('ex1',stats(img_object))
+    #img_object = piece
+    #img_scene = ref_img
+
+    #img_object = cv.imread("tmp_images/bears.png", cv.IMREAD_GRAYSCALE)
+    #img_scene = cv.imread("tmp_images/go.png", cv.IMREAD_GRAYSCALE)
+    #print('ex2', stats(img_object))
 
     #-- Step 1: Detect the keypoints using SURF Detector, compute the descriptors
     minHessian = 400
@@ -97,6 +102,8 @@ def SURF_detect(piece, ref_img, possible_locs):
         scene[i,1] = keypoints_scene[good_matches[i].trainIdx].pt[1]
 
     H, _ =  cv.findHomography(obj, scene, cv.RANSAC)
+    #print('H')
+    #print(H)
 
     #-- Get the corners from the image_1 ( the object to be "detected" )
     obj_corners = np.empty((4,1,2), dtype=np.float32)
@@ -108,6 +115,11 @@ def SURF_detect(piece, ref_img, possible_locs):
     obj_corners[2,0,1] = img_object.shape[0]
     obj_corners[3,0,0] = 0
     obj_corners[3,0,1] = img_object.shape[0]
+
+
+    obj_centroid = np.int32(np.mean(obj_corners[:,0,:], axis=0))
+    #print(stats(obj_corners))
+
 
     scene_corners = cv.perspectiveTransform(obj_corners, H)
     scene_centroid = np.int32(np.mean(scene_corners[:,0,:], axis=0))
@@ -132,7 +144,7 @@ def SURF_detect(piece, ref_img, possible_locs):
     closest = np.argmax(closeness)
     closest_possible_loc = possible_locs[closest]
 
-    print(scene_rotation)
+    #print(scene_rotation)
     return closest_possible_loc, scene_rotation
 
 

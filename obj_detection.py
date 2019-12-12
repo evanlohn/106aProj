@@ -4,6 +4,7 @@ import numpy as np
 import numpy.linalg as la
 import math
 import argparse
+from segment import stats
 
 parser = argparse.ArgumentParser(description='Code for Feature Matching with FLANN tutorial.')
 parser.add_argument('--input1', help='Path to input image 1.', default='tmp_images/bears.png')
@@ -12,6 +13,7 @@ args = parser.parse_args()
 
 img_object = cv.imread(args.input1, cv.IMREAD_GRAYSCALE)
 img_scene = cv.imread(args.input2, cv.IMREAD_GRAYSCALE)
+print(stats(img_object))
 if img_object is None or img_scene is None:
     print('Could not open or find the images!')
     exit(0)
