@@ -73,7 +73,7 @@ def imshow_mult(images, titles, inds=[0,0]):
 #finds the (potentially rotated) rectangular corners in a black/white image
 def find_corners(img):
 	#print(stats(img))
-	contours,_ = cv.findContours(np.uint8(img), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+	_, contours,_ = cv.findContours(np.uint8(img), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
 
 	coords = []
 	assert len(contours) == 1
@@ -92,7 +92,7 @@ def find_corners(img):
 # basically takes a binary image and fills in the black smudges inside white blobs with white
 def fill_holes(img):
 	des = img
-	contour,hier = cv.findContours(des,cv.RETR_CCOMP,cv.CHAIN_APPROX_SIMPLE)
+	_, contour,hier = cv.findContours(des,cv.RETR_CCOMP,cv.CHAIN_APPROX_SIMPLE)
 	for cnt in contour:
 	    cv.drawContours(des,[cnt],0,255,-1)
 
@@ -416,12 +416,12 @@ def main_test():
 	#imshow(prev_state)
 	#imshow(curr_state)
 	new_img, ref_transform = segment_reference(ref_img)
-	#imshow(new_img)
-
+	cv.imwrite("tmp_images/go.png", new_img)
 	dsk_cut_img, init_pos = segment_pieces(curr_state, prev_state, transform)
 
 	#print(stats(cut_img))
-	imshow(dsk_cut_img)
+	cv.imwrite("tmp_images/bears.png", dsk_cut_img)
+	exit(0)
 	#exit(0)
 
 	#other = imread('./individual_pieces/cropped_img0.png')
