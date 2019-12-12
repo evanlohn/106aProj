@@ -165,6 +165,9 @@ def wait_for(s):
 		count += 1
 		if count % 69 == 0:
 			print('remember: you just need to type {} to move to the next step. smh Beccy'.format(s))
+def scale_to_ppm(ref_img, ppm, phy_size):
+	new_size = ppm * phy_size[0], ppm *phy_size[1]
+	return cv2.resize(ref_img, new_size)
 
 
 def help():
@@ -186,6 +189,7 @@ def main(debug=False):
 			cal_pic, o, a, empty_table = request_calibration(debug)
 			pixel_origin, ppm, deskew_transform = paper_calibration(cal_pic)
 			last_img = empty_table
+			ref_img = scale_to_ppm(ref_img, ppm, (0.49, 0.69))
 			calibrate(o, a)
 		elif command == 'p':
 			if last_img is None:
