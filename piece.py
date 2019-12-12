@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 from contrast import increase_contrast
 
-from segment import imshow, imshow_mult
+from segment import imshow, imshow_mult, preproc
 
 class Piece:
 
@@ -48,28 +48,10 @@ class Piece:
         # assume we have an instance variable named self.cut_img that has a small image of just
         # the puzzle.
         piece = self.img
-        n = 64
-        box_size = 51
-        max_ang = 360 # imutils uses degrees
-        rotation_angles = [float(max_ang * i) / n for i in range(n)]
 
         possible_locs = self.calc_possible_locs(ref_img.shape, box_size=box_size)
+        position, rotation = SURF_detect(piece, ref_img, possible_locs)
 
-
-        best_position = (-1, -1)
-        best_confidence = -1
-        best_rot = 0
-        for i, rot in enumerate(rotation_angles):
-            rot_piece = imutils.rotate_bound(piece, rot)
-            #plt.imshow(rot_piece)
-            #plt.title('Piece {} of {}'.format(i+1, n))
-            #plt.show()
-            position, confidence = argmax_convolve(rot_piece, ref_img, possible_locs)
-
-            if confidence > best_confidence:
-                best_confidence = confidence
-                best_position = position
-                best_rot = rot
         self.final_pos = best_position
         self.rot_delta = best_rot
 
@@ -89,87 +71,73 @@ class Piece:
         # release gripper
         # move back to neutral (i.e. not in view of camera) position
 
-def argmax_convolve(rot_piece_color, ref_img_color, possible_locs):
+def SURF_detect(piece, ref_img, possible_locs):
+    img_object = preproc(piece)
+    img_scene = preproc(ref_img)
+    if img_object is None or img_scene is None:
+        print('Could not open or find the images!')
+        exit(0)
 
-    #print('starting argmax convolve')
+    #-- Step 1: Detect the keypoints using SURF Detector, compute the descriptors
+    minHessian = 400
+    detector = cv.xfeatures2d_SURF.create(hessianThreshold=minHessian)
+    keypoints_obj, descriptors_obj = detector.detectAndCompute(img_object, None)
+    keypoints_scene, descriptors_scene = detector.detectAndCompute(img_scene, None)
 
-    # confidences should be a sequence of array-like things that can be broadcasted.
-    # this function does some kind of element-wise aggregation to get a matrix of the
-    # broadcast shape, or otherwise a scalar if a list of scalars was passed in.
-    # examples are: sum, element-wise max, sum of squares, etc
-    def confidence_aggregator(confidences):
-        return np.amax(np.stack(confidences, axis=2), axis=2)
-        #return sum(confidences)/3
-        #return sum([conf * conf for conf in confidences])/10
-        #return np.amin(np.stack(confidences, axis=2), axis=2)
+    #-- Step 2: Matching descriptor vectors with a FLANN based matcher
+    # Since SURF is a floating-point descriptor NORM_L2 is used
+    matcher = cv.DescriptorMatcher_create(cv.DescriptorMatcher_FLANNBASED)
+    knn_matches = matcher.knnMatch(descriptors_obj, descriptors_scene, 2)
 
-    channels = ['r','g','b']
-    all_confidences = []
+    #-- Filter matches using the Lowe's ratio test
+    ratio_thresh = 0.75
+    good_matches = []
+    for m,n in knn_matches:
+        if m.distance < ratio_thresh * n.distance:
+            good_matches.append(m)
 
+    #-- Draw matches
+    img_matches = np.empty((max(img_object.shape[0], img_scene.shape[0]), img_object.shape[1]+img_scene.shape[1], 3), dtype=np.uint8)
+    cv.drawMatches(img_object, keypoints_obj, img_scene, keypoints_scene, good_matches, img_matches, flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
 
+    #-- Localize the object
+    obj = np.empty((len(good_matches),2), dtype=np.float32)
+    scene = np.empty((len(good_matches),2), dtype=np.float32)
+    for i in range(len(good_matches)):
+        #-- Get the keypoints from the good matches
+        obj[i,0] = keypoints_obj[good_matches[i].queryIdx].pt[0]
+        obj[i,1] = keypoints_obj[good_matches[i].queryIdx].pt[1]
+        scene[i,0] = keypoints_scene[good_matches[i].trainIdx].pt[0]
+        scene[i,1] = keypoints_scene[good_matches[i].trainIdx].pt[1]
 
+    H, _ =  cv.findHomography(obj, scene, cv.RANSAC)
 
-    all_conv_res = []
-    for dim_ind in range(ref_img_color.shape[2]):
-        ref_img = ref_img_color[:,:,dim_ind]
-        rot_piece = rot_piece_color[:,:,dim_ind]
-        all_conv_res.append(cv.filter2D(ref_img, -1, rot_piece))
-    #print('finished convolve')
-    conv_res = confidence_aggregator(all_conv_res)
-    assert conv_res.shape == ref_img.shape, str('shapes differ: conv is {}, ref is {}'.format(conv_res.shape, ref_img.shape))
-    poss_locs_mask = np.zeros_like(conv_res)
+    #-- Get the corners from the image_1 ( the object to be "detected" )
+    obj_corners = np.empty((4,1,2), dtype=np.float32)
+    obj_corners[0,0,0] = 0l
+    obj_corners[0,0,1] = 0
+    obj_corners[1,0,0] = img_object.shape[1]
+    obj_corners[1,0,1] = 0
+    obj_corners[2,0,0] = img_object.shape[1]
+    obj_corners[2,0,1] = img_object.shape[0]
+    obj_corners[3,0,0] = 0
+    obj_corners[3,0,1] = img_object.shape[0]
 
-    if possible_locs is None:
-        inds = np.unravel_index(np.argmax(conv_res), conv_res.shape)
-        confidence = conv_res[inds[0]][inds[1]]
-    else:
-        inds = (-1, -1)
-        confidence = -1
-        for loc in possible_locs:
-            poss_locs_mask[loc[0]:loc[0] + loc[2], loc[1]:loc[1]+loc[2]] = 1
+    obj_centroid = np.int32(np.mean(obj_corners[:,0,:], axis=0))
 
-            for row_ind in range(loc[0], loc[0]+loc[2]):
-                for col_ind in range(loc[1], loc[1] + loc[2]):
-                    #print(row_ind, col_ind)
-                    tmp_conf = conv_res[row_ind][col_ind]
-                    if tmp_conf > confidence:
-                        confidence = tmp_conf
-                        inds = (row_ind, col_ind)
-
-            #print(loc)
-            #section = conv_res[loc[0]:loc[0] + loc[2], loc[1]:loc[1]+loc[2]]
-            #box_inds = np.unravel_index(np.argmax(section), section.shape) 
-            #global_inds = np.array(box_inds) + np.array([loc[0], loc[1]])
-            #tmp_confidence = conv_res[global_inds[0]][global_inds[1]]
-            #if tmp_confidence > confidence:
-            #    confidence = tmp_confidence
-            #    inds = global_inds
-    conv_res_masked = conv_res * poss_locs_mask
-    ref_img_masked = ref_img * poss_locs_mask
-    new_conv_res = []
-    for dim_ind in range(ref_img_color.shape[2]):
-        ref_img = ref_img_color[:,:,dim_ind] * poss_locs_mask
-        rot_piece = rot_piece_color[:,:,dim_ind]
-        new_conv_res.append(cv.filter2D(ref_img, -1, rot_piece))
-    meh = confidence_aggregator(new_conv_res)
-    images = [conv_res, conv_res_masked, ref_img_color, ref_img_masked, rot_piece, meh]
-    titles = ['convolution: max conf {}'.format(confidence), 'masked convolution', 'reference', 'masked reference', 'piece', 'meh']
-    imshow_mult(images, titles, inds)
+    scene_corners = cv.perspectiveTransform(obj_corners, H)
+    scene_centroid = np.int32(np.mean(scene_corners[:,0,:], axis=0))
 
 
-    #images = [conv_res, ref_img, rot_piece]
-    #titles = ['convolution: max conf {}'.format(confidence), 'reference', 'piece']
-    #for i in range(len(images)):
-    #    plt.subplot(2,len(images)//2 + 1,i+1),plt.imshow(images[i],'gray')
-    #    if i < 2:
-    #        plt.subplot(2,len(images)//2 + 1,i+1),plt.plot(inds[1], inds[0], 'r+')
-    #    plt.title(titles[i])
-    #    #plt.xticks([]),plt.yticks([])
-
-    #plt.show()
-
-    return inds, confidence
-    #return position, confidence
+    #-- Draw lines between the corners (the mapped object in the scene - image_2 )
+    cv.line(img_matches, (int(scene_corners[0,0,0] + img_object.shape[1]), int(scene_corners[0,0,1])),\
+        (int(scene_corners[1,0,0] + img_object.shape[1]), int(scene_corners[1,0,1])), (0,255,0), 4)
+    cv.line(img_matches, (int(scene_corners[1,0,0] + img_object.shape[1]), int(scene_corners[1,0,1])),\
+        (int(scene_corners[2,0,0] + img_object.shape[1]), int(scene_corners[2,0,1])), (0,255,0), 4)
+    cv.line(img_matches, (int(scene_corners[2,0,0] + img_object.shape[1]), int(scene_corners[2,0,1])),\
+        (int(scene_corners[3,0,0] + img_object.shape[1]), int(scene_corners[3,0,1])), (0,255,0), 4)
+    cv.line(img_matches, (int(scene_corners[3,0,0] + img_object.shape[1]), int(scene_corners[3,0,1])),\
+        (int(scene_corners[0,0,0] + img_object.shape[1]), int(scene_corners[0,0,1])), (0,255,0), 4)
 
 # origin is the pixel coordinates (x, y) of the origin of the table frame (extracted by calibrate_ppm)
 # pixel_loc is the pixel coordinates of the pixel we want to determine
