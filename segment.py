@@ -289,7 +289,7 @@ def segment_pieces(img, background, transform=None):
 	img = cv.absdiff(img, background)
 	img = increase_contrast(img)  #TODO: keep? delete?
 	#imshow(img)
-	
+
 	adaptive_th = preproc(img)
 	#th2 = cv.adaptiveThreshold(adaptive_th,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C,cv.THRESH_BINARY_INV,101,10)
 	#TODO: put the rest of this block of code in a for loop over different absolute thresholds, picking the first one
@@ -298,7 +298,7 @@ def segment_pieces(img, background, transform=None):
 	#print(stats(th2))
 	#imshow(th2)
 
-	
+
 	sz = 5
 	#k1 = np.ones((sz,sz), np.uint8)
 	#th2 = cv.dilate(th2, k1)
@@ -422,12 +422,12 @@ def main_test():
 
 	#other = imread('./individual_pieces/cropped_img0.png')
 
-	
+
 	#print(stats(other - cut_img))
 	#print(args.cut_img)
 	#print(cut_img[720:730, 520:530])
 
-	
+
 
 	#pre = preproc(cut_img)
 	#imshow(pre)

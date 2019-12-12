@@ -4,14 +4,14 @@ import cv2
 import argparse
 import os
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 
 def mkFileNamer(pth, fname):
     il = [0]
     if not os.path.exists(pth):
         os.mkdir(pth)
     def newFileName():
-    	i = il[0]
+        i = il[0]
         full_path = os.path.join(pth, fname + str(i) + ".png")
         while os.path.exists(full_path):
             il[0] = i + 1
@@ -26,7 +26,11 @@ def charTypedWas(typed, c):
 def main():
     cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
     cap.set(cv2.CAP_PROP_EXPOSURE, .05)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
     print(cap.get(cv2.CAP_PROP_EXPOSURE))
+    print(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    print(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     try:
         while(True):
             # Capture frame-by-frame
