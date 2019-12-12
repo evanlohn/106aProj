@@ -54,7 +54,7 @@ def calibrate(origin, along_x_axis):
 	# translation is already given by "origin", modulo a small correction factor to z
 	trans = tuple(origin)
 	x_axis = along_x_axis - origin
-	x_axis = x_axis/np.linalg.norm(x_axis)
+	x_axis = float(x_axis)/np.linalg.norm(x_axis)
 	assert np.allclose(np.dot(x_axis, x_axis), 1)
 	# the angle between two unit-length vectors (in this case, [1, 0, 0] and x_axis)
 	# is the arccos of the dot product. dot product of x_axis and 0 is the first element of x_axis.

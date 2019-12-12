@@ -9,6 +9,8 @@ from matplotlib import pyplot as plt
 import numpy as np
 from contrast import increase_contrast
 
+from segment import imshow, imshow_mult
+
 class Piece:
 
     puzzle_dims = [4,6] # a 4 by 6 = 24 piece puzzle being solved
@@ -37,6 +39,7 @@ class Piece:
                 box_upper_left = center - box_size//2
                 possible_locs.append((box_upper_left[0], box_upper_left[1], box_size))
 
+        print(possible_locs)
         return possible_locs
 
     #Solves and sets the final pixel position and rotation delta
@@ -45,10 +48,10 @@ class Piece:
         # assume we have an instance variable named self.cut_img that has a small image of just
         # the puzzle.
         piece = self.img
-        n = 12
-        box_size = 11
+        n = 64
+        box_size = 15
         max_ang = 360 # imutils uses degrees
-        rotation_angles = [max_ang * i / n for i in range(n)]
+        rotation_angles = [float(max_ang * i) / n for i in range(n)]
 
         possible_locs = self.calc_possible_locs(ref_img.shape, box_size=box_size)
 
@@ -69,13 +72,31 @@ class Piece:
                 best_rot = rot
         self.final_pos = best_position
         self.rot_delta = best_rot
-        
-
-def argmax_convolve(rot_piece, ref_img, possible_locs):
 
 
-    conv_res = cv.filter2D(ref_img, -1, rot_piece)
-    assert conv_res.shape == ref_img.shape, str('shapes differ: conv is {}, ref is {}'.format(conv_res.shape, ref.shape))
+def argmax_convolve(rot_piece_color, ref_img_color, possible_locs):
+
+    #print('starting argmax convolve')
+
+    # confidences should be a sequence of array-like things that can be broadcasted.
+    # this function does some kind of element-wise aggregation to get a matrix of the
+    # broadcast shape, or otherwise a scalar if a list of scalars was passed in.
+    # examples are: sum, element-wise max, sum of squares, etc
+    def confidence_aggregator(confidences):
+        return np.amax(np.stack(confidences, axis=2), axis=2)
+        #return sum(confidences)/3
+
+    channels = ['r','g','b']
+    all_confidences = []
+
+    all_conv_res = []
+    for dim_ind in range(ref_img_color.shape[2]):
+        ref_img = ref_img_color[:,:,dim_ind]
+        rot_piece = rot_piece_color[:,:,dim_ind]
+        all_conv_res.append(cv.filter2D(ref_img, -1, rot_piece))
+    #print('finished convolve')
+    conv_res = confidence_aggregator(all_conv_res)
+    assert conv_res.shape == ref_img.shape, str('shapes differ: conv is {}, ref is {}'.format(conv_res.shape, ref_img.shape))
 
     if possible_locs is None:
         inds = np.unravel_index(np.argmax(conv_res), conv_res.shape)
@@ -84,25 +105,47 @@ def argmax_convolve(rot_piece, ref_img, possible_locs):
         inds = (-1, -1)
         confidence = -1
         for loc in possible_locs:
-            section = conv_res[loc[0]:loc[0] + loc[2], loc[1]:loc[1]+loc[2]]
-            box_inds = np.unravel_index(np.argmax(section), conv_res.shape)
-            global_inds = np.array(box_inds) + np.array([loc[0], loc[1]])
-            tmp_confidence = conv_res[global_inds[0]][global_inds[1]]
-            if tmp_confidence > confidence:
-                confidence = tmp_confidence
-                inds = global_inds
+            for row_ind in range(loc[0], loc[0]+loc[2]):
+                for col_ind in range(loc[1], loc[1] + loc[2]):
+                    #print(row_ind, col_ind)
+                    tmp_conf = conv_res[row_ind][col_ind]
+                    if tmp_conf > confidence:
+                        confidence = tmp_conf
+                        inds = (row_ind, col_ind)
+
+            #print(loc)
+            #section = conv_res[loc[0]:loc[0] + loc[2], loc[1]:loc[1]+loc[2]]
+            #box_inds = np.unravel_index(np.argmax(section), section.shape)
+            #global_inds = np.array(box_inds) + np.array([loc[0], loc[1]])
+            #tmp_confidence = conv_res[global_inds[0]][global_inds[1]]
+            #if tmp_confidence > confidence:
+            #    confidence = tmp_confidence
+            #    inds = global_inds
+    if confidence > 205:
+        images = [conv_res, ref_img, rot_piece]
+        titles = ['convolution: max conf {}'.format(confidence), 'reference', 'piece']
+        imshow_mult(images, titles, inds)
 
 
-    images = [conv_res, ref_img, rot_piece]
-    titles = ['convolution: max conf {}'.format(confidence), 'reference', 'piece']
-    for i in range(len(images)):
-        plt.subplot(2,len(images)//2 + 1,i+1),plt.imshow(images[i],'gray')
-        if i < 2:
-            plt.subplot(2,len(images)//2 + 1,i+1),plt.plot(inds[1], inds[0], 'r+')
-        plt.title(titles[i])
-        #plt.xticks([]),plt.yticks([])
+    #images = [conv_res, ref_img, rot_piece]
+    #titles = ['convolution: max conf {}'.format(confidence), 'reference', 'piece']
+    #for i in range(len(images)):
+    #    plt.subplot(2,len(images)//2 + 1,i+1),plt.imshow(images[i],'gray')
+    #    if i < 2:
+    #        plt.subplot(2,len(images)//2 + 1,i+1),plt.plot(inds[1], inds[0], 'r+')
+    #    plt.title(titles[i])
+    #    #plt.xticks([]),plt.yticks([])
 
-    plt.show()
+    #plt.show()
 
     return inds, confidence
     #return position, confidence
+
+# origin is the pixel coordinates (x, y) of the origin of the table frame (extracted by calibrate_ppm)
+# pixel_loc is the pixel coordinates of the pixel we want to determine
+# ppm is pixels per meter, found in calibrate_ppm
+def pixel_to_table_frame(origin, pixel_loc, ppm):
+    pixel_diff = np.array(pixel_loc) - np.array(origin)
+    # note that this ^^ implicitly assumes that the "vertical" of the image is the x axis of
+    # the table frame
+    return float(pixel_diff)/ppm

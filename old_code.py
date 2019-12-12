@@ -57,3 +57,69 @@ def find_corners(img, blockSize, sobel_k=3, harris_k=0.04, thresh=0.35):
 	#print(ignore_calibration_item[:5,:5])
 	table_mask = segment_table(ignore_calibration_item)
 """
+
+"""
+	#from main_test() in segment.py
+	first_thresh = cv.adaptiveThreshold(dsk_cut_img, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 51, 0)
+	#imshow(first_thresh, 'gray')
+
+	blockSize = 10
+	kernel = np.ones((blockSize,blockSize),np.uint8)
+	closed = cv.morphologyEx(np.float32(first_thresh), cv.MORPH_CLOSE, kernel)
+	dsk_cut_mask = fill_holes(np.uint8(closed))
+	#imshow(dsk_cut_mask, 'gray')
+
+	connectivity = 8
+	num_labels, labels, statistics, centroids = cv.connectedComponentsWithStats(dsk_cut_mask, connectivity, cv.CV_32S)
+
+	# sorting connected components by area
+	areas = sorted([(i, stat[cv.CC_STAT_AREA], centroids[i]) for i, stat in enumerate(statistics)], key = lambda x:x[1])
+
+	piece = areas[-2] # the biggest area is the background, typically.
+	#print(stats)
+	#print(centroids[:5])
+	dsk_cut_mask = (labels == piece[0])
+	#kernel = np.ones((30,30))
+	#dsk_cut_mask =  dsk_cut_mask * cv.morphologyEx(np.float32(dsk_cut_mask > 0), cv.MORPH_CLOSE, kernel)
+	#plt.imshow(dsk_cut_mask)
+	#plt.show()
+
+	#print(stats(np.uint8(dsk_cut_mask)))
+	ct = cv.findNonZero(dsk_cut_mask)
+	x,y,w,h = cv.boundingRect(ct)
+
+	final_cut = dsk_cut_img[y:y+h, x:x+w]
+
+	imshow(final_cut, 'gray')
+"""
+
+
+"""
+old segment_reference from segment.py
+
+	else:
+
+		img = imread('./raw_img_data/puzzle_pieces.png',0)
+		img = cv.medianBlur(img,5)
+
+		ret,th1 = cv.threshold(gray,127,255,cv.THRESH_BINARY)
+		th2 = cv.adaptiveThreshold(gray,255,cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY,11,2)
+		th3 = cv.adaptiveThreshold(gray,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY,11,2)
+
+		titles = ['Original Image', 'Global Thresholding (v = 127)',
+	            'Adaptive Mean Thresholding', 'Adaptive Gaussian Thresholding']
+		images = [img, th1, th2, th3]
+
+		contours, hierarchy = cv.findContours(th2, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+		cv.drawContours(img, contours, -1, (0,255,0), 3)
+
+		for i in range(4):
+		    plt.subplot(2,2,i+1),plt.imshow(images[i],'gray')
+		    plt.title(titles[i])
+		    plt.xticks([]),plt.yticks([])
+		if cant_plot:
+			plt.savefig('tmp.png')
+		else:
+			plt.show()
+
+"""
