@@ -133,6 +133,7 @@ def wait_for(str):
 		if count % 69 == 0:
 			print('remember: you just need to type {} to move to the next step. smh Beccy'.format(str))
 
+print('requesting calibration! delete me when you use main()')
 request_calibration()
 
 def help():
@@ -143,18 +144,27 @@ def help():
 
 def main():
 	help()
+	last_img = None
+	ref_path = './raw_img_data/full_puzzle.png'
+	ref_raw = increase_contrast(imread(ref_path))
+	ref_img = segment_reference(ref_raw)
 	while True:
 		command = input()
 		if command == 'c':
 			cal_pic, o, a, empty_table = request_calibration()
 			pixel_origin, ppm, deskew_transform = segment.paper_calibration(cal_pic)
+			last_img = empty_table
 			#TODO: store the above somewhere useful
 			#TODO: send rest position to pick_and_place service
 			calibrate(o, a)
 		elif command == 'p':
+			if last_img is None:
+				print('you must use the c command to calibrate at least once before running p')
+				continue
 			print('<<< beginning pick and place >>>')
-			print('segmenting piece...')
-			p_img, init_pos = segment_piece()
+			print('segmenting piece... click the window and press c to start')
+			new_img = single_capture()
+			p_img, init_pos = segment_pieces(new_img, last_img,deskew_transform)
 			print('piece segmented from rest of image')
 			piece = Piece(p_img, init_pos)
 			print('picking best position and orientation for piece in final puzzle')
