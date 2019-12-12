@@ -7,6 +7,7 @@ import cv2 as cv
 import imutils
 from matplotlib import pyplot as plt
 import numpy as np
+import numpy.linalg as la
 from contrast import increase_contrast
 
 from segment import imshow, imshow_mult, preproc, stats
@@ -24,7 +25,7 @@ class Piece:
 
     #based on the puzzle_dims and the shape of the reference image, pick the ranges of indices
     # to consider out of the full convolution result
-    def calc_possible_locs(self, ref_img_shape, box_size=11):
+    def calc_possible_locs(self, ref_img_shape):
         #divide the grid up as evenly as possible
         num_rows, num_cols = Piece.puzzle_dims
         big_box_height = ref_img_shape[0]//num_rows
@@ -41,7 +42,6 @@ class Piece:
                 #possible_locs.append((box_upper_left[0], box_upper_left[1], box_size))
 
         possible_locs = np.array(possible_locs)
-        print(possible_locs)
         return possible_locs
 
     #Solves and sets the final pixel position and rotation delta
@@ -54,13 +54,20 @@ class Piece:
         possible_locs = self.calc_possible_locs(ref_img.shape)
         position, rotation = SURF_detect(piece, ref_img, possible_locs)
 
-        self.final_pos = best_position
-        self.rot_delta = best_rot
+        self.final_pos = position
+        self.rot_delta = rotation
 
 def SURF_detect(piece, ref_img, possible_locs):
+
     img_object = preproc(piece)
     img_scene = preproc(ref_img)
-    print(stats(img_object))
+    #print('ex1',stats(img_object))
+    #img_object = piece
+    #img_scene = ref_img
+
+    #img_object = cv.imread("tmp_images/bears.png", cv.IMREAD_GRAYSCALE)
+    #img_scene = cv.imread("tmp_images/go.png", cv.IMREAD_GRAYSCALE)
+    #print('ex2', stats(img_object))
 
     #-- Step 1: Detect the keypoints using SURF Detector, compute the descriptors
     minHessian = 400
@@ -95,10 +102,12 @@ def SURF_detect(piece, ref_img, possible_locs):
         scene[i,1] = keypoints_scene[good_matches[i].trainIdx].pt[1]
 
     H, _ =  cv.findHomography(obj, scene, cv.RANSAC)
+    print('H')
+    print(H)
 
     #-- Get the corners from the image_1 ( the object to be "detected" )
     obj_corners = np.empty((4,1,2), dtype=np.float32)
-    obj_corners[0,0,0] = 0l
+    obj_corners[0,0,0] = 0
     obj_corners[0,0,1] = 0
     obj_corners[1,0,0] = img_object.shape[1]
     obj_corners[1,0,1] = 0
@@ -107,12 +116,19 @@ def SURF_detect(piece, ref_img, possible_locs):
     obj_corners[3,0,0] = 0
     obj_corners[3,0,1] = img_object.shape[0]
 
+
     obj_centroid = np.int32(np.mean(obj_corners[:,0,:], axis=0))
     print(stats(obj_corners))
 
+
     scene_corners = cv.perspectiveTransform(obj_corners, H)
     scene_centroid = np.int32(np.mean(scene_corners[:,0,:], axis=0))
+    v1 = np.array([obj_corners[0, 0, 0], obj_corners[0, 0, 1]]) - np.array([obj_corners[1, 0, 0], obj_corners[1, 0, 1]])
+    v2 = np.array([scene_corners[0, 0, 0], scene_corners[0, 0, 1]]) - np.array([scene_corners[1, 0, 0], scene_corners[1, 0, 1]])
+    cosang = np.dot(v1, v2)
+    sinang = la.norm(np.cross(v1, v2))
 
+    scene_rotation = np.arctan2(sinang, cosang)
 
     #-- Draw lines between the corners (the mapped object in the scene - image_2 )
     cv.line(img_matches, (int(scene_corners[0,0,0] + img_object.shape[1]), int(scene_corners[0,0,1])),\
@@ -123,6 +139,13 @@ def SURF_detect(piece, ref_img, possible_locs):
         (int(scene_corners[3,0,0] + img_object.shape[1]), int(scene_corners[3,0,1])), (0,255,0), 4)
     cv.line(img_matches, (int(scene_corners[3,0,0] + img_object.shape[1]), int(scene_corners[3,0,1])),\
         (int(scene_corners[0,0,0] + img_object.shape[1]), int(scene_corners[0,0,1])), (0,255,0), 4)
+
+    closeness = np.sum(np.square(possible_locs-scene_centroid), axis=1)
+    closest = np.argmax(closeness)
+    closest_possible_loc = possible_locs[closest]
+
+    print(scene_rotation)
+    return closest_possible_loc, scene_rotation
 
 
 # origin is the pixel coordinates (x, y) of the origin of the table frame (extracted by calibrate_ppm)

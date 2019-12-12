@@ -347,7 +347,7 @@ def segment_pieces(img, background, transform=None):
 	#imshow(masked_img)
 
 	final_cut = masked_img[y:y+h, x:x+w, :]
-	final_cut = increase_contrast(final_cut)
+	#final_cut = increase_contrast(final_cut)
 	#imshow(final_cut, title='final_cut', just_write=True)
 	return final_cut, np.array([y + h//2, x + w//2])
 	#opening=cv.cvtColor(opening,cv.COLOR_GRAY2BGR)
@@ -384,7 +384,7 @@ def main_reference():
 
 def main_pieces():
 	parser = argparse.ArgumentParser(description='specify which file(s) to segment')
-	parser.add_argument('file', type=str, nargs='?', default='./individual_pieces/img2.png')
+	parser.add_argument('file', type=str, nargs='?', default='./individual_pieces/img8.png')
 	parser.add_argument('--ref', type=str, nargs='?', default='./raw_img_data/full_puzzle.png')
 	args = parser.parse_args()
 	ref_img = imread(args.ref)
@@ -398,7 +398,7 @@ def main_pieces():
 def main_test():
 	from piece import Piece
 	parser = argparse.ArgumentParser(description='specify which file(s) to used for testing')
-	parser.add_argument('file', type=str, nargs='?', default='./individual_pieces/img9.png')
+	parser.add_argument('file', type=str, nargs='?', default='./individual_pieces/img3.png')
 	parser.add_argument('--prev_state', type=str, nargs='?', default='./raw_img_data/empty_table.png')
 
 	#parser.add_argument('--cut_img', type=str, nargs='?', default='./individual_pieces/extra_cropped_img00.png')
@@ -423,7 +423,6 @@ def main_test():
 
 	#print(stats(cut_img))
 	cv.imwrite("tmp_images/bears.png", dsk_cut_img)
-	exit(0)
 
 	#other = imread('./individual_pieces/cropped_img0.png')
 

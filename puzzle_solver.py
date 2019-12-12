@@ -5,16 +5,18 @@ if sys.version[0] != '2':
 	exit(0)
 
 import numpy as np
-import segment
 from piece import Piece
 from capture import single_capture
 
 import rospy
 import tf2_ros as tf
-from geometry_msgs.msg import Pose, PoseArray, Point, Quaternion
+from geometry_msgs.msg import Pose, PoseArray, Point, Quaternion, TransformStamped
 from tf.transformations import quaternion_from_euler
 
 from planning.srv import PlacePiece, PlacePieceResponse
+
+from contrast import increase_contrast
+from segment import imread, segment_reference, paper_calibration, segment_pieces
 
 import math
 
@@ -58,7 +60,7 @@ def calibrate(origin, along_x_axis):
 	# translation is already given by "origin", modulo a small correction factor to z
 	trans = tuple(origin)
 	x_axis = along_x_axis - origin
-	x_axis = float(x_axis)/np.linalg.norm(x_axis)
+	x_axis = np.float32(x_axis)/np.linalg.norm(x_axis)
 	assert np.allclose(np.dot(x_axis, x_axis), 1)
 	# the angle between two unit-length vectors (in this case, [1, 0, 0] and x_axis)
 	# is the arccos of the dot product. dot product of x_axis and 0 is the first element of x_axis.
@@ -68,7 +70,19 @@ def calibrate(origin, along_x_axis):
 
 	# this is supposed to broadcast the transform from base frame to a new "table" frame.
 	br = tf.TransformBroadcaster()
-	br.sendTransform(trans, tf.transformations.quaternion_from_euler(0, 0, theta), rospy.Time.now(), "table", "base")
+	t = TransformStamped()
+	t.header.stamp = rospy.Time.now()
+	t.header.frame_id = "base"
+	t.child_frame_id = "table"
+	t.transform.translation.x = trans[0]
+ 	t.transform.translation.y = trans[1]
+	t.transform.translation.z = trans[2]
+	q = quaternion_from_euler(0, 0, theta)
+	t.transform.rotation.x = q[0]
+	t.transform.rotation.y = q[1]
+	t.transform.rotation.z = q[2]
+	t.transform.rotation.w = q[3]
+	br.sendTransform(t)#(trans, quaternion_from_euler(0, 0, theta), rospy.Time.now(), "table", "base")
 
 # origin is the pixel coordinates (x, y) of the origin of the table frame (extracted by calibrate_ppm)
 # pixel_loc is the pixel coordinates of the pixel we want to determine
@@ -141,16 +155,17 @@ def help():
 	print('otherwise: display this help message')
 
 def main():
+	rospy.init_node('puzzle_solver_node')
 	help()
 	last_img = None
 	ref_path = './raw_img_data/full_puzzle.png'
 	ref_raw = increase_contrast(imread(ref_path))
-	ref_img = segment_reference(ref_raw)
+	ref_img, _ = segment_reference(ref_raw)
 	while True:
-		command = raw_input()
+		command = str(raw_input())
 		if command == 'c':
 			cal_pic, o, a, empty_table = request_calibration()
-			pixel_origin, ppm, deskew_transform = segment.paper_calibration(cal_pic)
+			pixel_origin, ppm, deskew_transform = paper_calibration(cal_pic)
 			last_img = empty_table
 			#TODO: store the above somewhere useful
 			#TODO: send rest position to pick_and_place service
@@ -168,9 +183,6 @@ def main():
 			print('picking best position and orientation for piece in final puzzle')
 			piece.solve_piece(ref_img)
 			print('found final piece location. Starting pick and place...')
-			piece = Piece(None, 0)
-			pixel_origin = None
-			ppm = 9001
 			place(piece, pixel_origin, ppm)
 			print('piece has been placed. Place next piece and run ')
 			#TODO: Take picture of end result for next segmentation
