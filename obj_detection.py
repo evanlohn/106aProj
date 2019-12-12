@@ -5,6 +5,7 @@ import numpy.linalg as la
 import math
 import argparse
 from segment import stats
+from piece import get_centroid_and_rot
 
 parser = argparse.ArgumentParser(description='Code for Feature Matching with FLANN tutorial.')
 parser.add_argument('--input1', help='Path to input image 1.', default='tmp_images/bears.png')
@@ -13,7 +14,7 @@ args = parser.parse_args()
 
 img_object = cv.imread(args.input1, cv.IMREAD_GRAYSCALE)
 img_scene = cv.imread(args.input2, cv.IMREAD_GRAYSCALE)
-print(stats(img_object))
+#print(stats(img_object))
 if img_object is None or img_scene is None:
     print('Could not open or find the images!')
     exit(0)
@@ -66,6 +67,11 @@ print(obj_corners.shape)
 print(H.shape)
 scene_corners = cv.perspectiveTransform(obj_corners, H)
 scene_centroid = np.int32(np.mean(scene_corners[:,0,:], axis=0))
+
+cent, rot = get_centroid_and_rot(obj_corners, scene_corners)
+
+print('CENTROID: ', cent)
+print('ROT: ', rot)
 
 v1 = np.array([obj_corners[0, 0, 0], obj_corners[0, 0, 1]]) - np.array([obj_corners[1, 0, 0], obj_corners[1, 0, 1]])
 v2 = np.array([scene_corners[0, 0, 0], scene_corners[0, 0, 1]]) - np.array([scene_corners[1, 0, 0], scene_corners[1, 0, 1]])

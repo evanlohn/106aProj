@@ -13,7 +13,13 @@ import argparse
 import math
 from contrast import increase_contrast
 
-
+if cant_plot:
+	import os
+	import matplotlib
+	matplotlib.use("Agg")
+	loc = './tmp_images'
+	fnamer = mkFileNamer(loc, 'tmp')
+from matplotlib import pyplot as plt
 
 expected_dims = (2560, 1440)
 
@@ -41,7 +47,7 @@ def imshow(img, title='', cmap='gray', inds=None, just_write=False):
 		plt.imshow(img, cmap)
 		if title:
 			plt.title(title)
-		if inds:
+		if inds is not None:
 			plt.plot(inds[1], inds[0], 'r+')
 
 		if cant_plot:
@@ -410,11 +416,11 @@ def main_test():
 	#imshow(prev_state)
 	#imshow(curr_state)
 	new_img, ref_transform = segment_reference(ref_img)
-	#cv.imwrite("tmp_images/go.png", new_img)
+	cv.imwrite("tmp_images/go.png", new_img)
 	dsk_cut_img, init_pos = segment_pieces(curr_state, prev_state, transform)
 
 	#print(stats(cut_img))
-	#cv.imwrite("tmp_images/bears.png", dsk_cut_img)
+	cv.imwrite("tmp_images/bears.png", dsk_cut_img)
 
 	#other = imread('./individual_pieces/cropped_img0.png')
 
@@ -451,6 +457,7 @@ def main_test():
 	#print('ref stats: {}'.format(stats(ref)))
 	p.solve_piece(ref) # TODO: replace with ref_img
 
+
 def main_calibration():
 	parser = argparse.ArgumentParser(description='specify which file(s) to segment')
 	parser.add_argument('file', type=str, nargs='?', default='./raw_img_data/img0.png')
@@ -459,15 +466,11 @@ def main_calibration():
 
 if __name__ == '__main__':
 	if cant_plot:
-		import os
-		import matplotlib
-		matplotlib.use("Agg")
 		loc = './tmp_images'
 		print('yeeting')
-		fnamer = mkFileNamer(loc, 'tmp')
 		files = [os.path.join(loc, file) for file in os.listdir(loc) if file[-4:] == '.png']
 		for file in files:
 			if (os.path.exists(file)):
 				os.remove(file)
-	from matplotlib import pyplot as plt
+
 	main_test()

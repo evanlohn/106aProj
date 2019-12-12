@@ -68,18 +68,19 @@ class Piece:
             rotation = 0
         print position
         position = pick_closest(position, possible_locs)
-
+        imshow(ref_img, title='position chosen for piece', inds=position)
+        print('position was:', position)
         self.final_pos = position
         self.rot_delta = rotation
 
 
 def pick_closest(point, choices):
     closeness = np.sum(np.square(choices-point), axis=1)
-    closest = np.argmax(closeness)
+    closest = np.argmin(closeness)
     return choices[closest]
 
 def get_centroid_and_rot(obj_corners, scene_corners):
-    scene_centroid = np.int32(np.mean(scene_corners[:,0,:], axis=0))
+    scene_centroid = np.int32(np.mean(scene_corners[:,0,:], axis=0))[::-1]
     v1 = np.array([obj_corners[0, 0, 0], obj_corners[0, 0, 1]]) - np.array([obj_corners[1, 0, 0], obj_corners[1, 0, 1]])
     v2 = np.array([scene_corners[0, 0, 0], scene_corners[0, 0, 1]]) - np.array([scene_corners[1, 0, 0], scene_corners[1, 0, 1]])
     cosang = np.dot(v1, v2)
@@ -157,6 +158,9 @@ def SURF_detect(piece, ref_img):
     scene_corners = cv.perspectiveTransform(obj_corners, H)
     scene_centroid, scene_rotation = get_centroid_and_rot(obj_corners, scene_corners)
 
+
+    #print('CENTROID: ', scene_centroid)
+    #print('ROTATION: ', scene_rotation)
     #-- Draw lines between the corners (the mapped object in the scene - image_2 )
     #cv.line(img_matches, (int(scene_corners[0,0,0] + img_object.shape[1]), int(scene_corners[0,0,1])),\
     #    (int(scene_corners[1,0,0] + img_object.shape[1]), int(scene_corners[1,0,1])), (0,255,0), 4)
@@ -207,7 +211,7 @@ def SIFT_detect(piece, ref_img):
     src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
     dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
 
-    M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
+    M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,4.0)
     matchesMask = mask.ravel().tolist()
 
     h,w = img1.shape
