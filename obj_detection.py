@@ -72,6 +72,7 @@ cv.line(img_matches, (int(scene_corners[3,0,0] + img_object.shape[1]), int(scene
     (int(scene_corners[0,0,0] + img_object.shape[1]), int(scene_corners[0,0,1])), (0,255,0), 4)
 
 #-- Show detected matches
+cv.imwrite('matches.png', img_matches)
 cv.imshow('Good Matches & Object detection', img_matches)
 
 cv.waitKey()
