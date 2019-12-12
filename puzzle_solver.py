@@ -5,14 +5,18 @@ if sys.version[0] != '2':
 	exit(0)
 
 import numpy as np
-#import segment
+import segment
 from piece import Piece
 from capture import single_capture
 
-#import rospy
-#import tf2_ros
-#from geometry_msgs.msg import Pose, PoseArray, Point, Quaternion
-#from tf.transformations import quaternion_from_euler
+import rospy
+import tf2_ros as tf
+from geometry_msgs.msg import Pose, PoseArray, Point, Quaternion
+from tf.transformations import quaternion_from_euler
+
+from planning.srv import PlacePiece, PlacePieceResponse
+
+import math
 
 
 def request_calibration():
@@ -63,12 +67,8 @@ def calibrate(origin, along_x_axis):
 	print "translation: {}    rotation: {}".format(trans, theta)
 
 	# this is supposed to broadcast the transform from base frame to a new "table" frame.
-	#br = tf.TransformBroadcaster()
-    #br.sendTransform(trans,
-#                     tf.transformations.quaternion_from_euler(0, 0, theta),
-#                     rospy.Time.now(),
-#                     "table",
-#                     "base")
+	br = tf.TransformBroadcaster()
+	br.sendTransform(trans, tf.transformations.quaternion_from_euler(0, 0, theta), rospy.Time.now(), "table", "base")
 
 # origin is the pixel coordinates (x, y) of the origin of the table frame (extracted by calibrate_ppm)
 # pixel_loc is the pixel coordinates of the pixel we want to determine
@@ -99,17 +99,17 @@ def place(piece, pixel_origin, ppm):
 	# piece.rot_delta has the amount of rotation about the z axis necessary
 
 	# calculate current coordinates of the piece in the table frame and convert to poses
-	start_coords = pixel_to_table_frame(pixel_origin, piece.init_pos, ppm)
-	end_coords = pixel_to_table_frame(pixel_origin, piece.final_pos, ppm)
-	start_pose = (start_coords, 0)
-	end_pose = (end_coords, piece.rot_delta)
+	start_coords = pixel_to_table_frame(pixel_origin, piece.init_pos, ppm)#[.607, -.454, -.226]#
+	end_coords = pixel_to_table_frame(pixel_origin, piece.final_pos, ppm)#[.546, .045, -.226]#
+	start_pose = coords_to_pose(start_coords, 0)
+	end_pose = coords_to_pose(end_coords, piece.rot_delta)#math.pi)
 
 	pose_arr = PoseArray()
 	pose_arr.header.frame_id = "table"
 	pose_arr.poses = [start_pose, end_pose]
 
 	# Send message to path planner
-	return pick_and_place_client(poses)
+	return pick_and_place_client(pose_arr)
 
 # Client for communicating with pick and place service
 # Send 2 poses for pick and place operation
@@ -117,7 +117,7 @@ def pick_and_place_client(poses):
 	#wait for service to start
 	rospy.wait_for_service('pick_and_place')
 	try:
-		pick_and_place = rospy.ServiceProxy('pick_and_place', PlacePieceRequest)
+		pick_and_place = rospy.ServiceProxy('pick_and_place', PlacePiece)
 		response = pick_and_place(poses)
 		return response.success
 	except rospy.ServiceException, e:
@@ -133,7 +133,6 @@ def wait_for(str):
 		if count % 69 == 0:
 			print('remember: you just need to type {} to move to the next step. smh Beccy'.format(str))
 
-request_calibration()
 
 def help():
 	print('commands are: (press enter after typing in the letter')
@@ -143,25 +142,42 @@ def help():
 
 def main():
 	help()
+	last_img = None
+	ref_path = './raw_img_data/full_puzzle.png'
+	ref_raw = increase_contrast(imread(ref_path))
+	ref_img = segment_reference(ref_raw)
 	while True:
-		command = input()
+		command = raw_input()
 		if command == 'c':
 			cal_pic, o, a, empty_table = request_calibration()
 			pixel_origin, ppm, deskew_transform = segment.paper_calibration(cal_pic)
+			last_img = empty_table
 			#TODO: store the above somewhere useful
 			#TODO: send rest position to pick_and_place service
 			calibrate(o, a)
 		elif command == 'p':
+			if last_img is None:
+				print('you must use the c command to calibrate at least once before running p')
+				continue
 			print('<<< beginning pick and place >>>')
-			print('segmenting piece...')
-			p_img, init_pos = segment_piece()
+			print('segmenting piece... click the window and press c to start')
+			new_img = single_capture()
+			p_img, init_pos = segment_pieces(new_img, last_img,deskew_transform)
 			print('piece segmented from rest of image')
 			piece = Piece(p_img, init_pos)
 			print('picking best position and orientation for piece in final puzzle')
 			piece.solve_piece(ref_img)
 			print('found final piece location. Starting pick and place...')
+			piece = Piece(None, 0)
+			pixel_origin = None
+			ppm = 9001
 			place(piece, pixel_origin, ppm)
 			print('piece has been placed. Place next piece and run ')
 			#TODO: Take picture of end result for next segmentation
 		else:
 			help()
+
+
+if __name__ == '__main__':
+    main()
+    print 'done'

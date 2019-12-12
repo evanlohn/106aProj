@@ -24,27 +24,34 @@ def charTypedWas(typed, c):
     return typed & 0xFF == ord(c)
 
 def single_capture(directory='./demo', fname='demo_img'):
+    cap = cv2.VideoCapture(0)
     newFileName = mkFileNamer(directory, fname)
     cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
     cap.set(cv2.CAP_PROP_EXPOSURE, .05)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-    #assert(cap.get(cv2.CAP_PROP_EXPOSURE) == .05)
+    assert(cap.get(cv2.CAP_PROP_EXPOSURE) > .04 and cap.get(cv2.CAP_PROP_EXPOSURE) < .06)
     assert(cap.get(cv2.CAP_PROP_FRAME_WIDTH) == 1920)
     assert(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) == 1080)
     try:
-        # Capture frame-by-frame
-        ret, frame = cap.read()
+        while(True):
+            # Capture frame-by-frame
+            ret, frame = cap.read()
 
-        color = frame # could also use gray or hsv here
-        # Display the resulting frame
-        cv2.imshow('frame', color)
-        tmp = cv2.waitKey()
-        #print(ord('q'), tmp, tmp & 0xFF)
-        if ret and charTypedWas(tmp, 'c'):
-            fname = newFileName()
-            print('saving {}\n'.format(fname))
-            cv2.imwrite(fname, color)
+            # Our operations on the frame come here
+            #gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            #hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+            color = frame # could also use gray or hsv here
+            # Display the resulting frame
+            cv2.imshow('frame', color)
+            tmp = cv2.waitKey(1)
+            #print(ord('q'), tmp, tmp & 0xFF)
+            if ret and charTypedWas(tmp, 'c'):
+                fname = newFileName()
+                print('saving {}'.format(fname))
+                cv2.imwrite(fname, color)
+                break
     finally:
         # When everything done, release the capture
         #cap.release()

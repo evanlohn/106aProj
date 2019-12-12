@@ -347,8 +347,9 @@ def segment_pieces(img, background, transform=None):
 	#imshow(masked_img)
 
 	final_cut = masked_img[y:y+h, x:x+w, :]
+	final_cut = increase_contrast(final_cut)
 	#imshow(final_cut, title='final_cut', just_write=True)
-	return final_cut, [y + h//2, x + w//2]
+	return final_cut, np.array([y + h//2, x + w//2])
 	#opening=cv.cvtColor(opening,cv.COLOR_GRAY2BGR)
 	#cs = cv.drawContours(opening, [contours[2]], -1, (0,255,0), 3)
 	#images = [img, deskew_img, th2, cs]
@@ -440,19 +441,19 @@ def main_test():
 	#print(stats(dsk_cut_img[:,:,0]))
 	#print(stats(dsk_cut_img[:,:,1]))
 	#print(stats(dsk_cut_img[:,:,2]))
-	dsk_cut_img = increase_contrast(dsk_cut_img)
+	#dsk_cut_img = increase_contrast(dsk_cut_img)
 
-	dsk_cut_img = dsk_cut_img
+	#dsk_cut_img = dsk_cut_img
 
-	print(stats(dsk_cut_img[:,:,0]))
-	print(stats(dsk_cut_img[:,:,1]))
-	print(stats(dsk_cut_img[:,:,2]))
+	#print(stats(dsk_cut_img[:,:,0]))
+	#print(stats(dsk_cut_img[:,:,1]))
+	#print(stats(dsk_cut_img[:,:,2]))
 
 	#imshow(dsk_cut_img[:,:,0])
 	#imshow(dsk_cut_img[:,:,1])
 	#imshow(dsk_cut_img[:,:,2])
 
-	p = Piece(dsk_cut_img, np.array(init_pos))
+	p = Piece(dsk_cut_img, init_pos)
 
 	ref = new_img  # new_img is the segmented reference
 	print('ref stats: {}'.format(stats(ref)))
