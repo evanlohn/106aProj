@@ -64,8 +64,10 @@ def imshow_mult(images, titles, inds=[0,0]):
 	    	plt.title(titles[i])
 	if cant_plot:
 		plt.savefig(fnamer())
+		plt.close()
 	else:
 		plt.show()
+
 
 
 #finds the (potentially rotated) rectangular corners in a black/white image
@@ -294,7 +296,8 @@ def segment_pieces(img, background, transform=None):
 	#th2 = cv.adaptiveThreshold(adaptive_th,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C,cv.THRESH_BINARY_INV,101,10)
 	#TODO: put the rest of this block of code in a for loop over different absolute thresholds, picking the first one
 	#      that satisfies some reasonable conditions like a single piece gets extracted and it's not at the top/bottom of the image
-	_, th2 = cv.threshold(adaptive_th, 20,1,cv.THRESH_BINARY)
+	#20
+	_, th2 = cv.threshold(adaptive_th, 23,1,cv.THRESH_BINARY)
 	#print(stats(th2))
 	#imshow(th2)
 
@@ -402,6 +405,7 @@ def main_test():
 
 	args = parser.parse_args()
 	ref_img = increase_contrast(imread(args.ref))
+	#ref_img = imread(args.ref)
 
 	calib = imread(args.cal)
 	origin, ppm, transform = paper_calibration(calib)
@@ -417,7 +421,7 @@ def main_test():
 	dsk_cut_img, init_pos = segment_pieces(curr_state, prev_state, transform)
 
 	#print(stats(cut_img))
-	#imshow(dsk_cut_img)
+	imshow(dsk_cut_img)
 	#exit(0)
 
 	#other = imread('./individual_pieces/cropped_img0.png')
@@ -434,9 +438,10 @@ def main_test():
 	#from deskew import deskew_transform
 	#dsk_cut_img = deskew_transform(pre, transform)
 
-	print(stats(dsk_cut_img[:,:,0]))
-	print(stats(dsk_cut_img[:,:,1]))
-	print(stats(dsk_cut_img[:,:,2]))
+	#print(stats(dsk_cut_img[:,:,0]))
+	#print(stats(dsk_cut_img[:,:,1]))
+	#print(stats(dsk_cut_img[:,:,2]))
+	dsk_cut_img = increase_contrast(dsk_cut_img)
 
 	dsk_cut_img = np.float32(dsk_cut_img)/(1 + np.sum(dsk_cut_img, axis=(0,1), keepdims=True))
 
@@ -444,9 +449,10 @@ def main_test():
 	print(stats(dsk_cut_img[:,:,1]))
 	print(stats(dsk_cut_img[:,:,2]))
 
-	imshow(dsk_cut_img)
+	imshow(dsk_cut_img[:,:,0])
+	imshow(dsk_cut_img[:,:,1])
+	imshow(dsk_cut_img[:,:,2])
 
-	exit(0)
 	p = Piece(dsk_cut_img, np.array(init_pos))
 
 	ref = new_img  # new_img is the segmented reference

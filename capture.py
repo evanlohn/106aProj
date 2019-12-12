@@ -4,7 +4,7 @@ import cv2
 import argparse
 import os
 
-cap = cv2.VideoCapture(1)
+
 
 def mkFileNamer(pth, fname):
     il = [0]
@@ -24,6 +24,7 @@ def charTypedWas(typed, c):
     return typed & 0xFF == ord(c)
 
 def main():
+    cap = cv2.VideoCapture(1)
     cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
     cap.set(cv2.CAP_PROP_EXPOSURE, .05)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)

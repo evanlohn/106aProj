@@ -48,8 +48,8 @@ class Piece:
         # assume we have an instance variable named self.cut_img that has a small image of just
         # the puzzle.
         piece = self.img
-        n = 36
-        box_size = 11
+        n = 64
+        box_size = 15
         max_ang = 360 # imutils uses degrees
         rotation_angles = [float(max_ang * i) / n for i in range(n)]
 
@@ -89,12 +89,29 @@ class Piece:
         # release gripper
         # move back to neutral (i.e. not in view of camera) position
 
-def argmax_convolve(rot_piece, ref_img, possible_locs):
+def argmax_convolve(rot_piece_color, ref_img_color, possible_locs):
 
     #print('starting argmax convolve')
-    conv_res = cv.filter2D(ref_img, -1, rot_piece)
+
+    # confidences should be a sequence of array-like things that can be broadcasted.
+    # this function does some kind of element-wise aggregation to get a matrix of the
+    # broadcast shape, or otherwise a scalar if a list of scalars was passed in.
+    # examples are: sum, element-wise max, sum of squares, etc
+    def confidence_aggregator(confidences):
+        return np.amax(np.stack(confidences, axis=2), axis=2)
+        #return sum(confidences)/3
+
+    channels = ['r','g','b']
+    all_confidences = []
+
+    all_conv_res = []
+    for dim_ind in range(ref_img_color.shape[2]):
+        ref_img = ref_img_color[:,:,dim_ind]
+        rot_piece = rot_piece_color[:,:,dim_ind]
+        all_conv_res.append(cv.filter2D(ref_img, -1, rot_piece))
     #print('finished convolve')
-    assert conv_res.shape == ref_img.shape, str('shapes differ: conv is {}, ref is {}'.format(conv_res.shape, ref.shape))
+    conv_res = confidence_aggregator(all_conv_res)
+    assert conv_res.shape == ref_img.shape, str('shapes differ: conv is {}, ref is {}'.format(conv_res.shape, ref_img.shape))
 
     if possible_locs is None:
         inds = np.unravel_index(np.argmax(conv_res), conv_res.shape)
@@ -105,10 +122,11 @@ def argmax_convolve(rot_piece, ref_img, possible_locs):
         for loc in possible_locs:
             for row_ind in range(loc[0], loc[0]+loc[2]):
                 for col_ind in range(loc[1], loc[1] + loc[2]):
+                    #print(row_ind, col_ind)
                     tmp_conf = conv_res[row_ind][col_ind]
                     if tmp_conf > confidence:
                         confidence = tmp_conf
-                        inds = (loc[0] + row_ind, loc[1] + col_ind)
+                        inds = (row_ind, col_ind)
 
             #print(loc)
             #section = conv_res[loc[0]:loc[0] + loc[2], loc[1]:loc[1]+loc[2]]
@@ -118,12 +136,11 @@ def argmax_convolve(rot_piece, ref_img, possible_locs):
             #if tmp_confidence > confidence:
             #    confidence = tmp_confidence
             #    inds = global_inds
-        if confidence >= 195:
-            images = [conv_res, ref_img, rot_piece]
-            titles = ['convolution: max conf {}'.format(confidence), 'reference', 'piece']
-            imshow_mult(images, titles, inds)
+    if confidence > 205:
+        images = [conv_res, ref_img, rot_piece]
+        titles = ['convolution: max conf {}'.format(confidence), 'reference', 'piece']
+        imshow_mult(images, titles, inds)
 
-    
 
     #images = [conv_res, ref_img, rot_piece]
     #titles = ['convolution: max conf {}'.format(confidence), 'reference', 'piece']
