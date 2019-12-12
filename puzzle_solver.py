@@ -137,15 +137,15 @@ def pick_and_place_client(poses):
 	except rospy.ServiceException, e:
 		print 'pick_and_place service failed'
 
-def wait_for(str):
+def wait_for(s):
 	count = 0
 	while True:
 		letter = raw_input()
-		if letter == str:
+		if letter == s:
 			break
 		count += 1
 		if count % 69 == 0:
-			print('remember: you just need to type {} to move to the next step. smh Beccy'.format(str))
+			print('remember: you just need to type {} to move to the next step. smh Beccy'.format(s))
 
 
 def help():

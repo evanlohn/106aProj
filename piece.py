@@ -52,18 +52,47 @@ class Piece:
         piece = self.img
 
         possible_locs = self.calc_possible_locs(ref_img.shape)
-        position, rotation = SURF_detect(piece, ref_img, possible_locs)
+        position, rotation = SURF_detect(preproc(piece), preproc(ref_img))
+        if position is None:
+            position, rotation = SURF_detect(piece[:,:,0], ref_img[:,:,0])
+        if position is None:
+            position, rotation = SURF_detect(piece[:,:,0], ref_img[:,:,1])
+        if position is None:
+            position, rotation = SURF_detect(piece[:,:,0], ref_img[:,:,2])
+        if position is None:
+            position, rotation = SIFT_detect(piece, ref_img)
+        if position is None:
+            position = np.random.choice(possible_locs)
+            rotation = 0
+
+        position = pick_closest(position, possible_locs)
 
         self.final_pos = position
         self.rot_delta = rotation
 
-def SURF_detect(piece, ref_img, possible_locs):
 
-    img_object = preproc(piece)
-    img_scene = preproc(ref_img)
+def pick_closest(point, choices):
+    closeness = np.sum(np.square(choices-point), axis=1)
+    closest = np.argmax(closeness)
+    return choices[closest]
+
+def get_centroid_and_rot(obj_corners, scene_corners):
+    scene_centroid = np.int32(np.mean(scene_corners[:,0,:], axis=0))
+    v1 = np.array([obj_corners[0, 0, 0], obj_corners[0, 0, 1]]) - np.array([obj_corners[1, 0, 0], obj_corners[1, 0, 1]])
+    v2 = np.array([scene_corners[0, 0, 0], scene_corners[0, 0, 1]]) - np.array([scene_corners[1, 0, 0], scene_corners[1, 0, 1]])
+    cosang = np.dot(v1, v2)
+    sinang = la.norm(np.cross(v1, v2))
+
+    scene_rotation = np.arctan2(sinang, cosang)
+    return scene_centroid, scene_rotation
+
+def SURF_detect(piece, ref_img):
+
+    #img_object = preproc(piece)
+    #img_scene = preproc(ref_img)
     #print('ex1',stats(img_object))
-    #img_object = piece
-    #img_scene = ref_img
+    img_object = piece
+    img_scene = ref_img
 
     #img_object = cv.imread("tmp_images/bears.png", cv.IMREAD_GRAYSCALE)
     #img_scene = cv.imread("tmp_images/go.png", cv.IMREAD_GRAYSCALE)
@@ -102,6 +131,8 @@ def SURF_detect(piece, ref_img, possible_locs):
         scene[i,1] = keypoints_scene[good_matches[i].trainIdx].pt[1]
 
     H, _ =  cv.findHomography(obj, scene, cv.RANSAC)
+    if H is None:
+        return None, None
     #print('H')
     #print(H)
 
@@ -122,13 +153,7 @@ def SURF_detect(piece, ref_img, possible_locs):
 
 
     scene_corners = cv.perspectiveTransform(obj_corners, H)
-    scene_centroid = np.int32(np.mean(scene_corners[:,0,:], axis=0))
-    v1 = np.array([obj_corners[0, 0, 0], obj_corners[0, 0, 1]]) - np.array([obj_corners[1, 0, 0], obj_corners[1, 0, 1]])
-    v2 = np.array([scene_corners[0, 0, 0], scene_corners[0, 0, 1]]) - np.array([scene_corners[1, 0, 0], scene_corners[1, 0, 1]])
-    cosang = np.dot(v1, v2)
-    sinang = la.norm(np.cross(v1, v2))
-
-    scene_rotation = np.arctan2(sinang, cosang)
+    scene_centroid, scene_rotation = get_centroid_and_rot(obj_corners, scene_corners)
 
     #-- Draw lines between the corners (the mapped object in the scene - image_2 )
     #cv.line(img_matches, (int(scene_corners[0,0,0] + img_object.shape[1]), int(scene_corners[0,0,1])),\
@@ -140,13 +165,57 @@ def SURF_detect(piece, ref_img, possible_locs):
     #cv.line(img_matches, (int(scene_corners[3,0,0] + img_object.shape[1]), int(scene_corners[3,0,1])),\
     #    (int(scene_corners[0,0,0] + img_object.shape[1]), int(scene_corners[0,0,1])), (0,255,0), 4)
 
-    closeness = np.sum(np.square(possible_locs-scene_centroid), axis=1)
-    closest = np.argmax(closeness)
-    closest_possible_loc = possible_locs[closest]
-
     #print(scene_rotation)
-    return closest_possible_loc, scene_rotation
+    return scene_centroid, scene_rotation
 
+# see : https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_feature2d/py_feature_homography/py_feature_homography.html
+def SIFT_detect(piece, ref_img):
+    good = []
+    MIN_MATCH_COUNT = 6
+    while len(good) < MIN_MATCH_COUNT
+        MIN_MATCH_COUNT -= 1
+        good = []
+        img1 = piece         # queryImage
+        img2 = ref_image # trainImage
+
+        # Initiate SIFT detector
+        sift = cv2.SIFT()
+
+        # find the keypoints and descriptors with SIFT
+        kp1, des1 = sift.detectAndCompute(img1,None)
+        kp2, des2 = sift.detectAndCompute(img2,None)
+
+        FLANN_INDEX_KDTREE = 0
+        index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+        search_params = dict(checks = 50)
+
+        flann = cv2.FlannBasedMatcher(index_params, search_params)
+
+        matches = flann.knnMatch(des1,des2,k=2)
+
+        # store all the good matches as per Lowe's ratio test.
+        good = []
+        for m,n in matches:
+            if m.distance < 0.7*n.distance:
+                good.append(m)
+
+    if len(good) < 2:
+        print('uh oh... random it is!')
+        return None
+    src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
+    dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
+
+    M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
+    matchesMask = mask.ravel().tolist()
+
+    h,w = img1.shape
+    pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
+    dst = cv2.perspectiveTransform(pts,M)
+
+    #img2 = cv2.polylines(img2,[np.int32(dst)],True,255,3, cv2.LINE_AA)
+    scene_centroid, scene_rotation = get_centroid_and_rot(pts, dst)
+
+    return scene_centroid, scene_rotation
 
 # origin is the pixel coordinates (x, y) of the origin of the table frame (extracted by calibrate_ppm)
 # pixel_loc is the pixel coordinates of the pixel we want to determine
