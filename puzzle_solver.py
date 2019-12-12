@@ -10,6 +10,7 @@ from capture import single_capture
 
 import rospy
 import tf2_ros as tf
+import tf2_msgs.msg
 from geometry_msgs.msg import Pose, PoseArray, Point, Quaternion, TransformStamped
 from tf.transformations import quaternion_from_euler
 
@@ -74,8 +75,10 @@ def calibrate(origin, along_x_axis):
 
 	print "translation: {}    rotation: {}".format(trans, theta)
 
+	#pub_tf = rospy.Publisher("/tf", tf2_msgs.msg.TFMessage, queue_size=1)
+
 	# this is supposed to broadcast the transform from base frame to a new "table" frame.
-	br = tf.TransformBroadcaster()
+	br = tf.StaticTransformBroadcaster()
 	t = TransformStamped()
 	t.header.stamp = rospy.Time.now()
 	t.header.frame_id = "base"
@@ -89,6 +92,8 @@ def calibrate(origin, along_x_axis):
 	t.transform.rotation.z = q[2]
 	t.transform.rotation.w = q[3]
 	br.sendTransform(t)#(trans, quaternion_from_euler(0, 0, theta), rospy.Time.now(), "table", "base")
+	#tfm = tf2_msgs.msg.TFMessage([t])
+	#pub_tf.publish(tfm)
 
 # origin is the pixel coordinates (x, y) of the origin of the table frame (extracted by calibrate_ppm)
 # pixel_loc is the pixel coordinates of the pixel we want to determine
@@ -109,7 +114,7 @@ def coords_to_pose(coords, theta):
 	pose = Pose()
 	pose.position.x = coords[0]
 	pose.position.y = coords[1]
-	pose.position.z = 0
+	pose.position.z = .02
 	q = quaternion_from_euler(0, -1 * math.pi, theta)
 	pose.orientation.x = q[0]
 	pose.orientation.y = q[1]
@@ -128,6 +133,7 @@ def place(piece, pixel_origin, ppm):
 	end_coords = pixel_to_table_frame(pixel_origin, piece.final_pos, ppm)#[.546, .045, -.226]#
 	print(start_coords)
 	print(end_coords)
+	#start_coords = [0,0]
 	start_pose = coords_to_pose(start_coords, 0)
 	end_pose = coords_to_pose(end_coords, piece.rot_delta)#math.pi)
 
