@@ -418,11 +418,11 @@ def main_test():
 	#imshow(prev_state)
 	#imshow(curr_state)
 	new_img, ref_transform = segment_reference(ref_img)
-	#cv.imwrite("tmp_images/go.png", new_img)
+	cv.imwrite("tmp_images/go.png", new_img)
 	dsk_cut_img, init_pos = segment_pieces(curr_state, prev_state, transform)
 
 	#print(stats(cut_img))
-	#cv.imwrite("tmp_images/bears.png", dsk_cut_img)
+	cv.imwrite("tmp_images/bears.png", dsk_cut_img)
 	exit(0)
 
 	#other = imread('./individual_pieces/cropped_img0.png')

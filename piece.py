@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 from contrast import increase_contrast
 
-from segment import imshow, imshow_mult, preproc
+from segment import imshow, imshow_mult, preproc, stats
 
 class Piece:
 
@@ -51,7 +51,7 @@ class Piece:
         # the puzzle.
         piece = self.img
 
-        possible_locs = self.calc_possible_locs(ref_img.shape, box_size=box_size)
+        possible_locs = self.calc_possible_locs(ref_img.shape)
         position, rotation = SURF_detect(piece, ref_img, possible_locs)
 
         self.final_pos = best_position
@@ -60,6 +60,7 @@ class Piece:
 def SURF_detect(piece, ref_img, possible_locs):
     img_object = preproc(piece)
     img_scene = preproc(ref_img)
+    print(stats(img_object))
 
     #-- Step 1: Detect the keypoints using SURF Detector, compute the descriptors
     minHessian = 400
@@ -107,6 +108,7 @@ def SURF_detect(piece, ref_img, possible_locs):
     obj_corners[3,0,1] = img_object.shape[0]
 
     obj_centroid = np.int32(np.mean(obj_corners[:,0,:], axis=0))
+    print(stats(obj_corners))
 
     scene_corners = cv.perspectiveTransform(obj_corners, H)
     scene_centroid = np.int32(np.mean(scene_corners[:,0,:], axis=0))
