@@ -21,7 +21,13 @@ from segment import imread, segment_reference, paper_calibration, segment_pieces
 import math
 
 
-def request_calibration():
+def request_calibration(debug=False):
+	if (debug):
+		origin = np.array([.27, -.78, -.2])
+		along = np.array([.44, -.79, -.2])
+		calib = imread('./raw_img_data/calib.png')
+		empty = imread('./raw_img_data/empty_table.png')
+		return calib, origin, along, empty
 	print('entering calibration mode\n')
 	print('Ensure tf_echo is running\n')
 
@@ -154,7 +160,7 @@ def help():
 	print('p: pick and place a new piece')
 	print('otherwise: display this help message')
 
-def main():
+def main(debug=False):
 	rospy.init_node('puzzle_solver_node')
 	help()
 	last_img = None
@@ -164,34 +170,40 @@ def main():
 	while True:
 		command = str(raw_input())
 		if command == 'c':
-			cal_pic, o, a, empty_table = request_calibration()
+			cal_pic, o, a, empty_table = request_calibration(debug)
 			pixel_origin, ppm, deskew_transform = paper_calibration(cal_pic)
 			last_img = empty_table
-			#TODO: store the above somewhere useful
-			#TODO: send rest position to pick_and_place service
 			calibrate(o, a)
 		elif command == 'p':
 			if last_img is None:
 				print('you must use the c command to calibrate at least once before running p')
 				continue
-			print('<<< beginning pick and place >>>')
-			print('segmenting piece... click the window and press c to start')
-			new_img = single_capture()
-			p_img, init_pos = segment_pieces(new_img, last_img, deskew_transform)
-			print('piece segmented from rest of image')
-			piece = Piece(p_img, init_pos)
-			print('picking best position and orientation for piece in final puzzle')
-			piece.solve_piece(ref_img)
-			print('found final piece location. Starting pick and place...')
-			place(piece, pixel_origin, ppm)
-			print('piece has been placed. Capture progress')
-			last_img = single_capture()
-			print('progress captured. Place next piece and run')
+			if (debug):
+				last_img = imread('./raw_img_data/img12.png')
+				new_img = imread('./raw_img_data/img13.png')
+				p_img, init_pos = segment_pieces(new_img, last_img, deskew_transform)
+				piece = Piece(p_img, init_pos)
+				piece.solve_piece(ref_img)
+				last_img = new_img
+			else:
+				print('<<< beginning pick and place >>>')
+				print('segmenting piece... click the window and press c to start')
+				new_img = single_capture()
+				p_img, init_pos = segment_pieces(new_img, last_img, deskew_transform)
+				print('piece segmented from rest of image')
+				piece = Piece(p_img, init_pos)
+				print('picking best position and orientation for piece in final puzzle')
+				piece.solve_piece(ref_img)
+				print('found final piece location. Starting pick and place...')
+				place(piece, pixel_origin, ppm)
+				print('piece has been placed. Capture progress')
+				last_img = single_capture()
+				print('progress captured. Place next piece and run')
 
 		else:
 			help()
 
 
 if __name__ == '__main__':
-    main()
+    main(debug=True)
     print 'done'
