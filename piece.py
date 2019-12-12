@@ -53,7 +53,9 @@ class Piece:
 
         possible_locs = self.calc_possible_locs(ref_img.shape)
         position, rotation = SURF_detect(preproc(piece), preproc(ref_img))
+
         if position is None:
+            print "SURF FAILED"
             position, rotation = SURF_detect(piece[:,:,0], ref_img[:,:,0])
         if position is None:
             position, rotation = SURF_detect(piece[:,:,0], ref_img[:,:,1])
@@ -64,7 +66,7 @@ class Piece:
         if position is None:
             position = np.random.choice(possible_locs)
             rotation = 0
-
+        print position
         position = pick_closest(position, possible_locs)
 
         self.final_pos = position
@@ -172,7 +174,7 @@ def SURF_detect(piece, ref_img):
 def SIFT_detect(piece, ref_img):
     good = []
     MIN_MATCH_COUNT = 6
-    while len(good) < MIN_MATCH_COUNT
+    while len(good) < MIN_MATCH_COUNT:
         MIN_MATCH_COUNT -= 1
         good = []
         img1 = piece         # queryImage
@@ -217,11 +219,3 @@ def SIFT_detect(piece, ref_img):
 
     return scene_centroid, scene_rotation
 
-# origin is the pixel coordinates (x, y) of the origin of the table frame (extracted by calibrate_ppm)
-# pixel_loc is the pixel coordinates of the pixel we want to determine
-# ppm is pixels per meter, found in calibrate_ppm
-def pixel_to_table_frame(origin, pixel_loc, ppm):
-    pixel_diff = np.array(pixel_loc) - np.array(origin)
-    # note that this ^^ implicitly assumes that the "vertical" of the image is the x axis of
-    # the table frame
-    return float(pixel_diff)/ppm

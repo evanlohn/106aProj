@@ -326,6 +326,8 @@ def segment_pieces(img, background, transform=None):
 	dsk_mask = deskew_transform(standard_resize(opening), transform)
 	dsk_img = deskew_transform(standard_resize(img), transform)
 
+	imshow(dsk_img, title='piece_seg_deskew', just_write=True)
+
 	ct = cv.findNonZero(dsk_mask)
 	x,y,w,h = cv.boundingRect(ct)
 

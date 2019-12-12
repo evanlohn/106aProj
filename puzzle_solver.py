@@ -94,10 +94,15 @@ def calibrate(origin, along_x_axis):
 # pixel_loc is the pixel coordinates of the pixel we want to determine
 # ppm is pixels per meter, found in calibrate_ppm
 def pixel_to_table_frame(origin, pixel_loc, ppm):
+    print "PIXEL TO TABLE FRAME---------------------"
+    print origin
+    print pixel_loc
     pixel_diff = np.array(pixel_loc) - np.array(origin)
+    print pixel_diff 
+    print ppm
     # note that this ^^ implicitly assumes that the "vertical" of the image is the x axis of
     # the table frame
-    return pixel_diff/ppm
+    return np.float32(pixel_diff)/ppm
 
 #converts coords and theta to Pose
 def coords_to_pose(coords, theta):
