@@ -95,7 +95,7 @@ class Controller(object):
         self._limb.set_joint_velocities(dict(itertools.izip(self._limb.joint_names(), np.zeros(len(self._limb.joint_names())))))
         rospy.sleep(0.1)
 
-    def execute_path(self, path, timeout=100.0, log=True):
+    def execute_path(self, path, timeout=100.0, log=False):
         """
         Execute a given path
 
@@ -164,7 +164,7 @@ class Controller(object):
             actual_velocities = np.array(self._actual_velocities)
             target_positions = np.array(self._target_positions)
             target_velocities = np.array(self._target_velocities)
-            plt.figure()
+            #plt.figure()
             joint_num = len(self._path.joint_trajectory.joint_names)
             for joint in range(joint_num):
                 plt.subplot(joint_num,2,2*joint+1)
