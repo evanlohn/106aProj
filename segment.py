@@ -3,7 +3,8 @@ if sys.version[0] != '2':
 	print('please run all code with python2!')
 	exit(0)
 
-cant_plot= True
+cant_plot= False
+only_plot=True
 
 import cv2 as cv
 import numpy as np
@@ -12,13 +13,13 @@ from capture import mkFileNamer
 import argparse
 import math
 from contrast import increase_contrast
-
+loc = './tmp_images'
+fnamer = mkFileNamer(loc, 'tmp')
 if cant_plot:
 	import os
 	import matplotlib
 	matplotlib.use("Agg")
-	loc = './tmp_images'
-	fnamer = mkFileNamer(loc, 'tmp')
+
 from matplotlib import pyplot as plt
 
 expected_dims = (2560, 1440)
@@ -50,7 +51,7 @@ def imshow(img, title='', cmap='gray', inds=None, just_write=False):
 		if inds is not None:
 			plt.plot(inds[1], inds[0], 'r+')
 
-		if cant_plot:
+		if cant_plot or only_plot:
 			plt.savefig(fnamer())
 		else:
 			plt.show()

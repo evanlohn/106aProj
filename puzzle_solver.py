@@ -33,33 +33,37 @@ def request_calibration(debug=False):
 	print('entering calibration mode\n')
 	print('Ensure tf_echo is running\n')
 
-	print('position the robot arm so it is not blocking the view of the table\n')
+	print('Position the AR tag at the origin of the table frame\n')
+
+	#print('position the robot arm so it is not blocking the view of the table\n')
 	#standby currently hardcoded
 
-	print('place the standard calibration paper square on the table, near the top left corner relative to the camera\n')
+	#print('place the standard calibration paper square on the table, near the top left corner relative to the camera\n')
 	print('Once the window pops up, press c to capture.')
 	calibration_pic = single_capture()
+	#TODO: Calculate table frame transform using base to camera and camera to base transforms from TF, and publish it to TF
+	table_frame = None
 
-	print('move end effector to the origin; should be a corner of the paper used for calibration\n')
-	print('once the arm is there, record the position:')
+	#print('move end effector to the origin; should be a corner of the paper used for calibration\n')
+	#print('once the arm is there, record the position:')
 
-	val = str(raw_input())
-	origin = np.array([float(value) for value in val.split(',')])
+	#val = str(raw_input())
+	#origin = np.array([float(value) for value in val.split(',')])
 
-	print('\nnow move the end effector to anywhere along the edge of the paper that faces away from the robot.\n')
-	print('again record the position once the end effector is in place')
+	#print('\nnow move the end effector to anywhere along the edge of the paper that faces away from the robot.\n')
+	#print('again record the position once the end effector is in place')
 
-	val = str(raw_input())
-	along_x_axis = np.array([float(value) for value in val.split(',')])
+	#val = str(raw_input())
+	#along_x_axis = np.array([float(value) for value in val.split(',')])
 
-	print('\nremove the calibration paper and robot arm from the view of the camera. Take a picture of the empty table\n')
+	print('\nremove the AR tag and robot arm from the view of the camera. Take a picture of the empty table\n')
 	print('Once the window pops up, press c to capture.')
 	empty_table = single_capture()
 
-	print('done! Calibration results will now be used to create the table frame.\n')
+	#print('done! Calibration results will now be used to create the table frame.\n')
 	print('do not use the p command quite yet; wait for confirmation that the frame was created\n')
 
-	return calibration_pic, origin, along_x_axis, empty_table
+	return calibration_pic, empty_table, table_frame#origin, along_x_axis, empty_table
 
 # good tutorial on adding frames in tf:
 # http://wiki.ros.org/tf/Tutorials/Adding%20a%20frame%20%28Python%29
@@ -118,7 +122,7 @@ def coords_to_pose(coords, theta):
 	pose = Pose()
 	pose.position.x = coords[0]
 	pose.position.y = coords[1]
-	pose.position.z = .02
+	pose.position.z = 0.01
 	q = quaternion_from_euler(0, -1 * math.pi, theta)
 	pose.orientation.x = q[0]
 	pose.orientation.y = q[1]
@@ -190,10 +194,11 @@ def main(debug=False):
 	while True:
 		command = str(raw_input())
 		if command == 'c':
-			cal_pic, o, a, empty_table = request_calibration(debug)
+			#cal_pic, o, a, empty_table = request_calibration(debug)
+			cal_pic, empty_table, table_frame = request_calibration(debug)
 			pixel_origin, ppm, deskew_transform = paper_calibration(cal_pic)
 			last_img = empty_table
-			ref_img = scale_to_ppm(ref_img, ppm, (0.49, 0.69))
+			ref_img = scale_to_ppm(ref_img, ppm, (0.69, 0.49))
 			calibrate(o, a)
 		elif command == 'p':
 			if last_img is None:
