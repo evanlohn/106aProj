@@ -12,7 +12,7 @@ import rospy
 import tf2_ros as tf
 import tf2_msgs.msg
 from geometry_msgs.msg import Pose, PoseArray, Point, Quaternion, TransformStamped
-from tf.transformations import quaternion_from_euler
+from tf.transformations import quaternion_from_euler, euler_from_quaternion, quaternion_multiply
 
 from planning.srv import PlacePiece, PlacePieceResponse
 
@@ -30,8 +30,11 @@ def request_calibration(debug=False):
 		calib = imread('./raw_img_data/calib.png')
 		empty = imread('./raw_img_data/empty_table.png')
 		return calib, origin, along, empty
+
+	tfBuffer = tf.Buffer()
+	listener = tf.TransformListener(tfBuffer)
 	print('entering calibration mode\n')
-	print('Ensure tf_echo is running\n')
+	#print('Ensure tf_echo is running\n')
 
 	print('Position the AR tag at the origin of the table frame\n')
 
@@ -39,10 +42,42 @@ def request_calibration(debug=False):
 	#standby currently hardcoded
 
 	#print('place the standard calibration paper square on the table, near the top left corner relative to the camera\n')
-	print('Once the window pops up, press c to capture.')
+	print('Once the window pops up, press c to capture.\n')
 	calibration_pic = single_capture()
+
+
+	print('Now, position the left arm such that the AR tag is in view.\n')
+	print('Once the arm is positioned correctly, press enter, and avoid touching the arm or AR tag until the next step appears.\n')
+	enter = raw_input()
 	#TODO: Calculate table frame transform using base to camera and camera to base transforms from TF, and publish it to TF
-	table_frame = None
+	#Wait for camera to AR tag
+	rate = rospy.Rate(10.0)
+	#grabbing the ar tag transform
+	
+	while (True):
+		print('trying to get ar transform')
+		while not rospy.is_shutdown():
+			try:
+				ar_trans = tfBuffer.lookup_transform('left_hand_camera_axis', 'ar_marker_3', rospy.Time())
+				break
+			except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+				rate.sleep()
+				continue
+		#grabbing the camera transform once the ar tag transform is retrieved.
+		print('trying to get hand transform')
+		while not rospy.is_shutdown():
+			try:
+				camera_trans = tfBuffer.lookup_transform('base', 'right_hand_camera_axis', rospy.Time())
+				break
+			except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+				rate.sleep()
+				continue
+		#Finally compose to get table frame, and publish to TF
+		calibrate(camera_trans, ar_trans)
+		print('type c to exit loop\n')
+
+		if (str(raw_input()) == 'c'):
+			break
 
 	#print('move end effector to the origin; should be a corner of the paper used for calibration\n')
 	#print('once the arm is there, record the position:')
@@ -63,25 +98,33 @@ def request_calibration(debug=False):
 	#print('done! Calibration results will now be used to create the table frame.\n')
 	print('do not use the p command quite yet; wait for confirmation that the frame was created\n')
 
-	return calibration_pic, empty_table, table_frame#origin, along_x_axis, empty_table
+	return calibration_pic, empty_table#along_x_axis, empty_table
 
 # good tutorial on adding frames in tf:
 # http://wiki.ros.org/tf/Tutorials/Adding%20a%20frame%20%28Python%29
-def calibrate(origin, along_x_axis):
+def calibrate(c_trans, ar_trans):#(origin, along_x_axis):
 	#goal is the translation and the rotation about the z axis
 	# translation is already given by "origin", modulo a small correction factor to z
-	trans = tuple(origin)
-	x_axis = along_x_axis - origin
-	x_axis = np.float32(x_axis)/np.linalg.norm(x_axis)
-	assert np.allclose(np.dot(x_axis, x_axis), 1)
+
+	#TODO: calculate composition of two frames, publish to TF
+
+	c_q = np.array([c_trans.transform.rotation.x, c_trans.transform.rotation.y, c_trans.transform.rotation.z, c_trans.transform.rotation.w])
+	ar_q = np.array([ar_trans.transform.rotation.x, ar_trans.transform.rotation.y, ar_trans.transform.rotation.z, ar_trans.transform.rotation.w])
+	composed_q = quaternion_multiply(c_q, ar_q)
+	(roll, pitch, yaw) = euler_from_quaternion(composed_q)
+	composed_q = quaternion_from_euler(0, 0, yaw)
+
+	#x_axis = along_x_axis - origin
+	#x_axis = np.float32(x_axis)/np.linalg.norm(x_axis)
+	#assert np.allclose(np.dot(x_axis, x_axis), 1)
 	# the angle between two unit-length vectors (in this case, [1, 0, 0] and x_axis)
 	# is the arccos of the dot product. dot product of x_axis and 0 is the first element of x_axis.
-	cosang = np.dot(x_axis, np.array([1, 0, 0]))
-	sinang = np.linalg.norm(np.cross(x_axis, np.array([1, 0, 0])))
+	#cosang = np.dot(x_axis, np.array([1, 0, 0]))
+	#sinang = np.linalg.norm(np.cross(x_axis, np.array([1, 0, 0])))
 
-	theta = -1 * np.arctan2(sinang, cosang)
+	#theta = -1 * np.arctan2(sinang, cosang)
 
-	print "translation: {}    rotation: {}".format(trans, theta)
+	#print "translation: {}    rotation: {}".format(trans, theta)
 
 	#pub_tf = rospy.Publisher("/tf", tf2_msgs.msg.TFMessage, queue_size=1)
 
@@ -91,14 +134,14 @@ def calibrate(origin, along_x_axis):
 	t.header.stamp = rospy.Time.now()
 	t.header.frame_id = "base"
 	t.child_frame_id = "table"
-	t.transform.translation.x = trans[0]
- 	t.transform.translation.y = trans[1]
-	t.transform.translation.z = trans[2]
-	q = quaternion_from_euler(0, 0, theta)
-	t.transform.rotation.x = q[0]
-	t.transform.rotation.y = q[1]
-	t.transform.rotation.z = q[2]
-	t.transform.rotation.w = q[3]
+	t.transform.translation.x = c_trans.transform.translation.x - ar_trans.transform.translation.x
+ 	t.transform.translation.y = c_trans.transform.translation.y - ar_trans.transform.translation.y
+	t.transform.translation.z = c_trans.transform.translation.z - ar_trans.transform.translation.z
+	#q = quaternion_from_euler(0, 0, theta)
+	t.transform.rotation.x = composed_q[0]
+	t.transform.rotation.y = composed_q[1]
+	t.transform.rotation.z = composed_q[2]
+	t.transform.rotation.w = composed_q[3]
 	br.sendTransform(t)#(trans, quaternion_from_euler(0, 0, theta), rospy.Time.now(), "table", "base")
 	#tfm = tf2_msgs.msg.TFMessage([t])
 	#pub_tf.publish(tfm)
@@ -143,6 +186,7 @@ def place(piece, pixel_origin, ppm):
 	print(end_coords)
 	#start_coords = [0,0]
 	start_pose = coords_to_pose(start_coords, 0)
+	start_pose.position.y -= .07
 	end_pose = coords_to_pose(end_coords, piece.rot_delta)#math.pi)
 
 	pose_arr = PoseArray()
@@ -195,11 +239,11 @@ def main(debug=False):
 		command = str(raw_input())
 		if command == 'c':
 			#cal_pic, o, a, empty_table = request_calibration(debug)
-			cal_pic, empty_table, table_frame = request_calibration(debug)
+			cal_pic, empty_table = request_calibration(debug)
 			pixel_origin, ppm, deskew_transform = paper_calibration(cal_pic)
 			last_img = empty_table
 			ref_img = scale_to_ppm(ref_img, ppm, (0.69, 0.49))
-			calibrate(o, a)
+			#calibrate(o, a)
 		elif command == 'p':
 			if last_img is None:
 				print('you must use the c command to calibrate at least once before running p')

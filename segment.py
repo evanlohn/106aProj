@@ -151,7 +151,7 @@ def calc_reference_mask(img, adap_type='mean', blockSize=11, C=2, invert=False, 
 	#	plt.show()
 
 	#TODO: write a more sophisticated way to pick out the rectangle
-	puzzle_box = areas[-2] # the biggest area is the background, typically.
+	puzzle_box = areas[-2]#[-2] # the biggest area is the background, typically.
 	#print(stats)
 	#print(centroids[:5])
 	puzzle_mask = (labels == puzzle_box[0])
@@ -237,7 +237,7 @@ def segment_reference(ref_img):
 def paper_calibration(img):
 	transform, dsk_mask = transform_from_paper(img)
 	corners = find_corners(dsk_mask)
-	origin = corners[0]
+	origin = np.mean(corners)#corners[0]
 	corners = np.float32([list(corn)[::-1] for corn in corners])
 	ppm = calculate_ppm(corners)
 	return origin, ppm, transform
@@ -248,7 +248,7 @@ def calculate_ppm(corners):
 	#dimensions of paper in meters, assumes landscape orientation
 	#dimensions = [.2794, .2159]
 	#dimensions of paper in meters, assumes portrait orientation
-	dimensions = [.2159, .2794]
+	dimensions = [.209, .216]
 	side_ppm = [np.float32(corners[1][0] - corners[0][0]) / dimensions[0],
 				 np.float32(corners[2][0] - corners[3][0]) / dimensions[0],
 				 np.float32(corners[3][1] - corners[0][1]) / dimensions[1],
@@ -257,8 +257,8 @@ def calculate_ppm(corners):
 
 
 #Obtains the deskew transform and deskewed paper mask from the paper image
-a1 = np.float32(8.5)/np.float32(11)
-a2 = np.float32(11)/np.float32(8.5)
+a1 = np.float32(.209)/np.float32(.216)
+a2 = np.float32(.216)/np.float32(.209)
 def transform_from_paper(img, aspect_ratio=a1):
 	gray = preproc(img)
 	#imshow(img)
