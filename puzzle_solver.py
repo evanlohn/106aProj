@@ -180,18 +180,20 @@ def place(piece, pixel_origin, ppm):
 	# piece.rot_delta has the amount of rotation about the z axis necessary
 
 	# calculate current coordinates of the piece in the table frame and convert to poses
-	start_coords = pixel_to_table_frame(pixel_origin, piece.init_pos, ppm)#[.607, -.454, -.226]#
+	start_coords = [0,0,0]#pixel_to_table_frame(pixel_origin, piece.init_pos, ppm)#[.607, -.454, -.226]#
 	end_coords = pixel_to_table_frame(np.array([0,0]), piece.final_pos, ppm)#[.546, .045, -.226]#
 	print(start_coords)
 	print(end_coords)
 	#start_coords = [0,0]
 	start_pose = coords_to_pose(start_coords, 0)
-	start_pose.position.y -= .07
+	start_pose.position.x += .02
 	end_pose = coords_to_pose(end_coords, piece.rot_delta)#math.pi)
-
+	end_pose.position.x -= .1
 	pose_arr = PoseArray()
 	pose_arr.header.frame_id = "table"
 	pose_arr.poses = [start_pose, end_pose]
+	print('theta: ')
+	print(piece.rot_delta)
 
 	# Send message to path planner
 	return pick_and_place_client(pose_arr)
