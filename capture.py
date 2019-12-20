@@ -24,7 +24,7 @@ def charTypedWas(typed, c):
     return typed & 0xFF == ord(c)
 
 def single_capture(directory='./demo', fname='demo_img'):
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(-1)
     newFileName = mkFileNamer(directory, fname)
     cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
     cap.set(cv2.CAP_PROP_EXPOSURE, .05)
@@ -59,7 +59,7 @@ def single_capture(directory='./demo', fname='demo_img'):
     return color
 
 def main():
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(-1)
     cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
     cap.set(cv2.CAP_PROP_EXPOSURE, .05)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)

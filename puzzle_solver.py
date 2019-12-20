@@ -186,7 +186,7 @@ def place(piece, pixel_origin, ppm):
 	print(end_coords)
 	#start_coords = [0,0]
 	start_pose = coords_to_pose(start_coords, 0)
-	start_pose.position.y -= .07
+	start_pose.position.y -= .05
 	end_pose = coords_to_pose(end_coords, piece.rot_delta)#math.pi)
 
 	pose_arr = PoseArray()
