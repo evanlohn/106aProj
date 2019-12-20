@@ -83,10 +83,15 @@ def get_centroid_and_rot(obj_corners, scene_corners):
     scene_centroid = np.int32(np.mean(scene_corners[:,0,:], axis=0))[::-1]
     v1 = np.array([obj_corners[0, 0, 0], obj_corners[0, 0, 1]]) - np.array([obj_corners[1, 0, 0], obj_corners[1, 0, 1]])
     v2 = np.array([scene_corners[0, 0, 0], scene_corners[0, 0, 1]]) - np.array([scene_corners[1, 0, 0], scene_corners[1, 0, 1]])
-    cosang = np.dot(v1, v2)
-    sinang = la.norm(np.cross(v1, v2))
+    
+    scene_rotation = np.arccos((v2 / la.norm(v2))[0])
 
-    scene_rotation = np.arctan2(sinang, cosang)
+    # cosang = np.dot(v1, v2)
+    # sinang = la.norm(np.cross(v1, v2))
+
+    # scene_rotation = np.arctan2(sinang, cosang)
+
+
     return scene_centroid, scene_rotation
 
 def SURF_detect(piece, ref_img):
