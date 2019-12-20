@@ -4,6 +4,38 @@ You can use the [editor on GitHub](https://github.com/evanlohn/106aProj/edit/mas
 
 Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
 
+
+
+### Introduction
+Have you ever wanted your resident large, expensive humanoid robot to solve a puzzle for you? We aim to show how a Baxter robot can be programmed to solve a jigsaw puzzle with computer vision techniques and minimal human interaction.
+
+### Design
+
+## Hardware
+We worked with:
+- 1 arm of the [Baxter robot](https://en.wikipedia.org/wiki/Baxter_(robot)) with [suction gripper kit](https://www.generationrobots.com/en/401622-vacuum-gripper-starter-kit-for-baxter.html)
+- large floor puzzle: 24 pieces
+- Logitech C920 webcam + tripod
+- 
+
+We break up our approach to puzzle solving into two main stages: calibration and a piece solver loop.
+
+## Calibration
+
+
+### Implementation
+
+### Challenges
+
+mention calibration issues, precision issues, segmentation issues
+
+### Results
+
+### Conclusions
+
+
+This website showcases the work of Rebecca Abraham, Jason Huynh, and Evan Lohn on a primarily self-directed EECS C106A class project.
+
 ### Markdown
 
 Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
