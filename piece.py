@@ -174,7 +174,7 @@ def SURF_detect(piece, ref_img):
     #print(scene_rotation)
 
     #-- Show detected matches
-    cv.imshow(img_matches, title="matches", cmap=None, just_write=False)
+    imshow(img_matches, title="matches", cmap=None, just_write=True)
 
     return scene_centroid, scene_rotation
 
