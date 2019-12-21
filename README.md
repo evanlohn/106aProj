@@ -12,18 +12,18 @@ We worked with:
 - Logitech C920 webcam + tripod
 - [AR tag](https://en.wikipedia.org/wiki/ARTag)
 
-![modules](./imgs/modules.png) 
+![modules](./imgs/modules.png)
 
 ### Calibration
-![calibration](./imgs/calibration.png) 
+![calibration](./imgs/calibration.png)
 
-We break up our approach to puzzle solving into two main stages: calibration and a piece solver loop. 
+We break up our approach to puzzle solving into two main stages: calibration and a piece solver loop.
 
 The purpose of the calibration stage is to connect the pixel coordinates of images from the camera with physical coordinates usable by baxter. To do this, we:
 
 1. Place a square AR tag at the upper left corner of the area in which Baxter will solve the puzzle
 2. Capture an image from the webcam, segment the AR tag, and calculate a deskewing transformation using the expected orientation and aspect ratio (1:1 for a square) of the AR tag when viewed top-down. This deskewing transformation allows us to transform raw images from the camera into a "deskewed pixel space" that simulates what the image would like like if the camera were directly above the table, pointing downwards. By calculating the center of the segmented AR tag in deskewed pixel space, we get the origin of our puzzle-solving coordinate frame in deskewed pixel space.
-![segmentation](./imgs/segment.png) 
+![segmentation](./imgs/segment.png)
 3. Place baxter's camera directly above the AR tag pointing down. We then process the images from Baxter's hand camera with AR tag recognition software  to find the coordinate transformation between Baxter's hand and the AR tag. This allows us to calculate the coordinate transformation between Baxter and the middle of the AR tag. We store this transformation, allowing Baxter to know where the origin of the puzzle-solving coordinate frame is even after the AR tag is removed.
 4. Remove the AR tag. Baxter is now ready to solve the puzzle!
 
@@ -32,8 +32,8 @@ The purpose of the calibration stage is to connect the pixel coordinates of imag
 Physical Piece solving (picking up and placing a new piece with roughly correct position and orientation) uses the following loop:
 1. **Capture an image** of the table before the new piece is placed
 2. Put the new piece on the table roughly at the origin, and capture another image. Using pixel-wise absolute difference between this image and the one from the previous step (and some additional processing), we **segment the new puzzle piece**.
-![piece segmentation](./imgs/piece.png) 
-3. Using the deskewed pixel position and rotation of the piece from Abstract Piece Solving _(see next section)_, **compute the physical coordinates where the piece should be placed**. This step also requires pixels-per-meter (ppm) in the deskewed image space, which is calculated with knowledge of the dimensions of the AR tag from the original calibration image. 
+![piece segmentation](./imgs/piece.png)
+3. Using the deskewed pixel position and rotation of the piece from Abstract Piece Solving _(see next section)_, **compute the physical coordinates where the piece should be placed**. This step also requires pixels-per-meter (ppm) in the deskewed image space, which is calculated with knowledge of the dimensions of the AR tag from the original calibration image.
 4. Using the moveit motion planning library, have Baxter pick up the piece from the origin and place it at the desired location with the desired orientation.
 ![actuation](./imgs/motion.png)
 
@@ -65,5 +65,20 @@ Using the puzzle assistant in practice is not the most user-friendly, but it als
 
 {% include youtube.html %}
 [Link to video](https://www.youtube.com/watch?v=wR17tmMPvuk)
+
+
+## Team
+#### Evan Lohn
+Evan is a 4th year EECS undergraduate interested in machine learning and basketball.
+##### Contributions
+His focus was on the pipeline from deskewed images to final physical puzzle positions, as well as on abstract puzzle solving.
+#### Rebecca Abraham
+Rebecca is a 4th year EECS undergraduate and musician with interests in robotics.
+##### Contributions
+She implemented abstract puzzle solving using SURF and SIFT and adapted the AR tags for use with our calibration routine, replacing our initial, less robust attempt.
+#### Jason Huynh
+Jason is a 4th year EECS undergraduate with a side interest in personal electric vehicles.
+##### Contributions
+He worked on the image deskewing and the ROS pipeline, writing the code for communicating solved puzzle piece positions to Baxter as well as for the pick and place routine.
 
 This website showcases the work of Rebecca Abraham, Jason Huynh, and Evan Lohn on a primarily self-directed EECS C106A class project.

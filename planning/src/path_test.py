@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
-Path Planning Script for Lab 7
-Author: Valmik Prabhu
+Path Planning Script for Lab 7, adapted for Group 37's final project
+Author: Valmik Prabhu, Jason Huynh, Rebecca Abraham, Evan Lohn
 """
 import sys
 assert sys.argv[1] in ("sawyer", "baxter")
@@ -317,4 +317,3 @@ def pick_and_place_server():
 
 if __name__ == '__main__':
     pick_and_place_server()
-
