@@ -54,38 +54,6 @@ We were able to largely accomplish our goal of having Baxter be able to assist i
 
 Using the puzzle assistant in practice is not the most user-friendly, but it also performs a nontrivial task. After taking any large jigsaw puzzle and inputting a reference image for it (taken from a picture of the box, for example) and the puzzle dimensions, you can have Baxter do all the "heavy lifting" of solving the puzzle for you!
 
-
+{% include youtube.html id=wR17tmMPvuk %}
 
 This website showcases the work of Rebecca Abraham, Jason Huynh, and Evan Lohn on a primarily self-directed EECS C106A class project.
-
-### Markdown
-
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
-
-```markdown
-Syntax highlighted code block
-
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/evanlohn/106aProj/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://help.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
