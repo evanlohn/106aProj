@@ -54,6 +54,6 @@ We were able to largely accomplish our goal of having Baxter be able to assist i
 
 Using the puzzle assistant in practice is not the most user-friendly, but it also performs a nontrivial task. After taking any large jigsaw puzzle and inputting a reference image for it (taken from a picture of the box, for example) and the puzzle dimensions, you can have Baxter do all the "heavy lifting" of solving the puzzle for you!
 
-{% include youtube.html id=wR17tmMPvuk %}
+{% include youtube.html id="wR17tmMPvuk" %}
 
 This website showcases the work of Rebecca Abraham, Jason Huynh, and Evan Lohn on a primarily self-directed EECS C106A class project.
