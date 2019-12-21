@@ -10,6 +10,8 @@ We worked with:
 - Logitech C920 webcam + tripod
 - [AR tag](https://en.wikipedia.org/wiki/ARTag)
 
+![modules](./imgs/modules.png) 
+
 ### Calibration
 
 We break up our approach to puzzle solving into two main stages: calibration and a piece solver loop. 
