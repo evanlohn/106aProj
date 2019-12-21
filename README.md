@@ -46,6 +46,7 @@ As can be seen from our videos, one of the main challenges we faced was the loss
 - not placing pieces directly on the origin, causing pickup to fail
 - the suction gripper would sometime latch on to a piece at a non-center point of the piece; this caused problems because our algorithm attempts to have Baxter release the piece directly above the location determined to be that piece's correct center in physical coordinates.
 - The simplification we made by assuming the puzzle is roughly gridlike is not perfect (i.e. piece centers don't fall exactly on the intersection points of the grid), so even if all else goes right the piece may be place slightly off center from its correct final position.
+- For the particular Baxter we were using, the camera feed from the right hand was interpreted as coming from the left hand's camera, and vice versa. This meant that instead of just using built in transform calculation packages that worked with the AR tag package, we had to manually compose transforms to determine the transform between the base of the Baxter robot and the origin of the puzzle-solving frame.
 
 ### Results
 
