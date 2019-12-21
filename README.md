@@ -1,3 +1,5 @@
+If you are viewing this as a README on GitHub, click [here](https://evanlohn.github.io/106aProj/) to view the project website.
+
 ## Introduction
 Have you ever wanted your resident large, expensive humanoid robot to help you solve a children's puzzle? We aim to show how a Baxter robot can be programmed to solve a jigsaw puzzle with computer vision techniques and minimal human interaction. More concretely, we give the robot an image of the completed puzzle, along with the puzzle's dimensions and number of pieces, then place pieces on the table one by one and have Baxter place them with correct position and orientation.
 
