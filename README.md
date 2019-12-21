@@ -13,6 +13,7 @@ We worked with:
 ![modules](./imgs/modules.png) 
 
 ### Calibration
+![calibration](./imgs/calibration.png) 
 
 We break up our approach to puzzle solving into two main stages: calibration and a piece solver loop. 
 
