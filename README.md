@@ -81,4 +81,4 @@ Jason is a 4th year EECS undergraduate with a side interest in personal electric
 ##### Contributions
 He worked on the image deskewing and the ROS pipeline, writing the code for communicating solved puzzle piece positions to Baxter as well as for the pick and place routine.
 
-This website showcases the work of Rebecca Abraham, Jason Huynh, and Evan Lohn on a primarily self-directed EECS C106A class project.
+###### This website showcases the work of Rebecca Abraham, Jason Huynh, and Evan Lohn on a primarily self-directed EECS C106A class project.
