@@ -10,6 +10,8 @@ We worked with:
 - Logitech C920 webcam + tripod
 - [AR tag](https://en.wikipedia.org/wiki/ARTag)
 
+![modules](./imgs/modules.png) 
+
 ### Calibration
 
 We break up our approach to puzzle solving into two main stages: calibration and a piece solver loop. 
@@ -18,6 +20,7 @@ The purpose of the calibration stage is to connect the pixel coordinates of imag
 
 1. Place a square AR tag at the upper left corner of the area in which Baxter will solve the puzzle
 2. Capture an image from the webcam, segment the AR tag, and calculate a deskewing transformation using the expected orientation and aspect ratio (1:1 for a square) of the AR tag when viewed top-down. This deskewing transformation allows us to transform raw images from the camera into a "deskewed pixel space" that simulates what the image would like like if the camera were directly above the table, pointing downwards. By calculating the center of the segmented AR tag in deskewed pixel space, we get the origin of our puzzle-solving coordinate frame in deskewed pixel space.
+![segmentation](./imgs/segment.png) 
 3. Place baxter's camera directly above the AR tag pointing down. We then process the images from Baxter's hand camera with AR tag recognition software  to find the coordinate transformation between Baxter's hand and the AR tag. This allows us to calculate the coordinate transformation between Baxter and the middle of the AR tag. We store this transformation, allowing Baxter to know where the origin of the puzzle-solving coordinate frame is even after the AR tag is removed.
 4. Remove the AR tag. Baxter is now ready to solve the puzzle!
 
@@ -26,8 +29,10 @@ The purpose of the calibration stage is to connect the pixel coordinates of imag
 Physical Piece solving (picking up and placing a new piece with roughly correct position and orientation) uses the following loop:
 1. **Capture an image** of the table before the new piece is placed
 2. Put the new piece on the table roughly at the origin, and capture another image. Using pixel-wise absolute difference between this image and the one from the previous step (and some additional processing), we **segment the new puzzle piece**.
+![piece segmentation](./imgs/piece.png) 
 3. Using the deskewed pixel position and rotation of the piece from Abstract Piece Solving _(see next section)_, **compute the physical coordinates where the piece should be placed**. This step also requires pixels-per-meter (ppm) in the deskewed image space, which is calculated with knowledge of the dimensions of the AR tag from the original calibration image. 
 4. Using the moveit motion planning library, have Baxter pick up the piece from the origin and place it at the desired location with the desired orientation.
+![actuation](./imgs/motion.png)
 
 ### Abstract Piece Solving
 
@@ -38,6 +43,7 @@ Abstract Piece Solving refers to the problem of: given a (mostly) segmented imag
 2. Calculate the angle between the top edge of the original piece image and that edge after being transformed by the found homography.
 
 3. Calculate the centroid of the image of the homography. We assume the puzzle is grid-like in that each piece in the solved puzzle has a clear row and column index. Therefore, we use the closest location on that implicit grid as the outputted piece location.
+![matching](./imgs/matching.png)
 
 ## Challenges
 
